@@ -1,401 +1,389 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { 
-  TrendingUp, 
-  Calendar, 
-  Target, 
-  Zap, 
-  Award, 
-  Clock,
-  BarChart3,
-  PieChart,
-  Activity,
+  CheckCircle,
+  Circle,
   Flame,
-  Star,
+  Zap,
+  ArrowRight,
+  Clock,
+  Target,
   Trophy,
-  CheckCircle
+  Heart,
+  Gift,
+  Coins
 } from 'lucide-react';
 
-function Dashboard({ addNotification }) {
+function Dashboard({ addNotification, setActiveSection }) {
   const { gameData, themes } = useData();
-  const [timeRange, setTimeRange] = useState('week');
   
   const currentTheme = gameData.user?.theme || 'light';
   const themeConfig = themes[currentTheme] || themes.light;
 
-  // Use the same logic as Habits component to get habit data
-  const getHabitsData = () => {
-    if (gameData.habits && gameData.habits.length > 0) {
-      return gameData.habits;
-    }
-    // If no habits in gameData, return empty array (don't use example data in Dashboard)
-    return [];
-  };
-
-  const allHabits = getHabitsData();
-  const analytics = useMemo(() => {
-    const now = new Date();
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-
-    const getDateRange = () => {
-      switch(timeRange) {
-        case 'week': return weekAgo;
-        case 'month': return monthAgo;
-        case 'year': return yearAgo;
-        default: return weekAgo;
+  // Hábitos para hoy
+  const todayHabits = useMemo(() => {
+    const today = new Date().getDay();
+    const all = gameData.habits || [];
+    return all.filter(habit => {
+      if (habit.frequency === 'Diario') return true;
+      if ((habit.frequency === 'Semanal' || habit.frequency === 'Personalizado') && habit.customDays) {
+        return habit.customDays.includes(today);
       }
-    };
+      return true;
+    }).sort((a, b) => {
+      if (a.completedToday !== b.completedToday) return a.completedToday ? 1 : -1;
+      return b.streak - a.streak;
+    }).slice(0, 5); // Show top 5
+  }, [gameData.habits]);
 
-    const rangeStart = getDateRange();
-
-    // Filter data by time range
-    const recentTasks = gameData.tasks.filter(task => 
-      new Date(task.createdAt) >= rangeStart
-    );
-    const recentHabits = allHabits.filter(habit => 
-      new Date(habit.createdAt) >= rangeStart
-    );
-    const completedTasks = recentTasks.filter(task => task.completed);
-    const completedHabits = recentHabits.filter(habit => 
-      habit.completedToday || habit.totalCompletions > 0
-    );
-
-    // Calculate productivity metrics (tasks + habits)
-    const taskXP = completedTasks.reduce((sum, task) => sum + (task.xp || 0), 0);
-    const taskCoins = completedTasks.reduce((sum, task) => sum + (task.coins || 0), 0);
-    const habitXP = completedHabits.reduce((sum, habit) => sum + (habit.xp || 0), 0);
-    const habitCoins = completedHabits.reduce((sum, habit) => sum + (habit.coins || 0), 0);
-    const totalXP = taskXP + habitXP;
-    const totalCoins = taskCoins + habitCoins;
+  // Tareas pendientes
+  const activeTasks = useMemo(() => {
+    const all = gameData.tasks || [];
+    const incomplete = all.filter(t => !t.completed);
     
-    // Area performance
-    const areaPerformance = gameData.lifeAreas.map(area => {
-      const areaTasks = gameData.tasks.filter(task => task.category === area.id);
-      const completedAreaTasks = areaTasks.filter(task => task.completed);
-      const areaHabits = allHabits.filter(habit => habit.category === area.id);
+    return incomplete.sort((a, b) => {
+      const priorityA = (a.urgency === 'urgent' && a.importance === 'important') ? 0 : 
+                        (a.priority === 'high' ? 1 : 2);
+      const priorityB = (b.urgency === 'urgent' && b.importance === 'important') ? 0 : 
+                        (b.priority === 'high' ? 1 : 2);
       
-      return {
-        id: area.id,
-        name: area.id,
-        progress: area.progress,
-        tasksCompleted: completedAreaTasks.length,
-        totalTasks: areaTasks.length,
-        habitsActive: areaHabits.length,
-        efficiency: areaTasks.length > 0 ? (completedAreaTasks.length / areaTasks.length) * 100 : 0
-      };
-    });
-
-    // Daily activity (last 7 days)
-    const dailyActivity = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const dateStr = date.toDateString();
+      if (priorityA !== priorityB) return priorityA - priorityB;
       
-      const dayTasks = gameData.tasks.filter(task => 
-        task.completedAt && new Date(task.completedAt).toDateString() === dateStr
-      );
-      const dayHabits = allHabits.filter(habit => 
-        habit.completedToday || (habit.lastCompleted && new Date(habit.lastCompleted).toDateString() === dateStr)
-      );
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return new Date(a.dueDate) - new Date(b.dueDate);
+    }).slice(0, 5);
+  }, [gameData.tasks]);
 
-      dailyActivity.push({
-        date: date.toLocaleDateString('es-ES', { weekday: 'short' }),
-        tasks: dayTasks.length,
-        habits: dayHabits.length,
-        total: dayTasks.length + dayHabits.length
-      });
+  // Recompensas asequibles
+  const affordableRewards = useMemo(() => {
+    const all = gameData.rewards || [];
+    const coins = gameData.user?.coins || 0;
+    // Mostrar recompensas que el usuario pueda pagar, o las más baratas primero
+    return all.sort((a, b) => {
+      const aAffordable = coins >= a.cost;
+      const bAffordable = coins >= b.cost;
+      if (aAffordable && !bAffordable) return -1;
+      if (!aAffordable && bAffordable) return 1;
+      return a.cost - b.cost;
+    }).slice(0, 3);
+  }, [gameData.rewards, gameData.user?.coins]);
+
+  // Daily Progress Calculation
+  const dailyProgress = useMemo(() => {
+    if (todayHabits.length === 0) return 0;
+    const completedItems = todayHabits.filter(h => h.completedToday).length;
+    return Math.round((completedItems / todayHabits.length) * 100);
+  }, [todayHabits]);
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Buenos días';
+    if (hour < 19) return 'Buenas tardes';
+    return 'Buenas noches';
+  }, []);
+
+  const getPriorityColor = (priority, urgency, importance) => {
+    if (urgency === 'urgent' && importance === 'important') return 'text-red-600 bg-red-50 border-red-200';
+    switch(priority) {
+      case 'high': return 'text-orange-600 bg-orange-50 border-orange-200';
+      case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      case 'low': return 'text-blue-600 bg-blue-50 border-blue-200';
+      default: return 'text-gray-600 bg-gray-50 border-gray-200';
     }
-
-    // Completion rates by priority
-    const priorityStats = {
-      high: { completed: 0, total: 0 },
-      medium: { completed: 0, total: 0 },
-      low: { completed: 0, total: 0 }
-    };
-
-    gameData.tasks.forEach(task => {
-      if (task.priority) {
-        priorityStats[task.priority].total++;
-        if (task.completed) {
-          priorityStats[task.priority].completed++;
-        }
-      }
-    });
-
-    // Calculate productivity score
-    const productivityScore = Math.round(
-      (completedTasks.length * 10 + 
-       completedHabits.reduce((sum, habit) => sum + (habit.streak || 0), 0) * 5 +
-       gameData.user.streak * 2) / 
-      Math.max(1, recentTasks.length + recentHabits.length)
-    );
-
-    // Best performing day
-    const bestDay = dailyActivity.reduce((best, day) => 
-      day.total > best.total ? day : best, dailyActivity[0] || { total: 0 }
-    );
-
-    return {
-      totalTasks: recentTasks.length,
-      completedTasks: completedTasks.length,
-      totalHabits: allHabits.length,
-      activeHabits: completedHabits.length,
-      habitsCompletedToday: allHabits.filter(h => h.completedToday).length,
-      totalXP,
-      totalCoins,
-      areaPerformance,
-      dailyActivity,
-      priorityStats,
-      productivityScore,
-      bestDay,
-      completionRate: recentTasks.length > 0 ? 
-        Math.round((completedTasks.length / recentTasks.length) * 100) : 0,
-      streakBonus: gameData.user.streak * 5
-    };
-  }, [gameData, timeRange]);
-
-  const getAreaIcon = (areaId) => {
-    const icons = {
-      health: '❤️',
-      career: '💼',
-      relationships: '👥',
-      personal: '🧠',
-      finances: '💰',
-      home: '🏠'
-    };
-    return icons[areaId] || '📊';
   };
 
-  const getAreaName = (areaId) => {
-    const names = {
-      health: 'Salud',
-      career: 'Carrera',
-      relationships: 'Relaciones',
-      personal: 'Personal',
-      finances: 'Finanzas',
-      home: 'Hogar'
-    };
-    return names[areaId] || areaId;
+  const priorityLabel = (task) => {
+    if (task.urgency === 'urgent' && task.importance === 'important') return 'Urgente';
+    if (task.priority === 'high') return 'Alta';
+    if (task.priority === 'medium') return 'Media';
+    return 'Baja';
   };
+
+  const currentHp = gameData.user?.hp ?? 100;
+  const maxHp = gameData.user?.maxHp ?? 100;
+  const isHpLow = currentHp <= 30;
 
   return (
-    <div className={`space-y-6 ${themeConfig.text}`}>
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className={`text-4xl font-bold mb-2 ${themeConfig.text}`}>Dashboard Analytics</h1>
-          <p className={themeConfig.textMuted}>Tu progreso detallado y estadísticas</p>
-        </div>
-        
-        {/* Time Range Selector */}
-        <div className="flex gap-2">
-          {['week', 'month', 'year'].map(range => (
-            <button
-              key={range}
-              onClick={() => setTimeRange(range)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                timeRange === range
-                  ? 'bg-brand-600 text-white'
-                  : `${themeConfig.card} ${themeConfig.text} ${themeConfig.border} hover:bg-gray-100`
-              }`}
-            >
-              {range === 'week' ? 'Semana' : range === 'month' ? 'Mes' : 'Año'}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className={`space-y-6 md:space-y-8 ${themeConfig.text} w-full max-w-7xl mx-auto px-2 sm:px-4 md:px-0`}>
+      
+      {/* Hero Expansivo: Más inmersivo, abarca el ancho completo de forma elegante */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-gradient-to-br from-brand-600 via-brand-700 to-brand-900 rounded-[2rem] p-6 sm:p-8 md:p-10 text-white shadow-2xl relative overflow-hidden">
+        {/* Decoraciones de Cristal / Luz */}
+        <div className="absolute top-0 right-0 w-64 h-64 md:w-96 md:h-96 bg-white opacity-10 rounded-full blur-[80px] transform translate-x-1/3 -translate-y-1/3 pointer-events-none" />
+        <div className="absolute bottom-0 left-10 md:left-20 w-48 h-48 md:w-64 md:h-64 bg-brand-400 opacity-20 rounded-full blur-[60px] transform translate-y-1/2 pointer-events-none" />
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 lg:gap-4">
-        <div className={`card-glow p-4 md:p-5 flex flex-col items-center justify-center relative overflow-hidden group`}>
-          <div className="absolute inset-0 bg-blue-500/5 group-hover:bg-blue-500/10 transition-colors" />
-          <Target className="w-5 h-5 md:w-6 md:h-6 text-blue-500 mb-2 md:mb-3" />
-          <div className={`text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-blue-600 to-blue-400`}>{analytics.completionRate}%</div>
-          <div className={`${themeConfig.textMuted} text-[10px] md:text-xs font-medium uppercase tracking-wider mt-1 text-center`}>Completado</div>
-        </div>
-        
-        <div className={`card-glow p-4 md:p-5 flex flex-col items-center justify-center relative overflow-hidden group`}>
-          <div className="absolute inset-0 bg-yellow-500/5 group-hover:bg-yellow-500/10 transition-colors" />
-          <Zap className="w-5 h-5 md:w-6 md:h-6 text-yellow-500 mb-2 md:mb-3" />
-          <div className={`text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-yellow-600 to-yellow-400`}>{analytics.totalXP}</div>
-          <div className={`${themeConfig.textMuted} text-[10px] md:text-xs font-medium uppercase tracking-wider mt-1 text-center`}>Total XP</div>
-        </div>
-        
-        <div className={`card-glow p-4 md:p-5 flex flex-col items-center justify-center relative overflow-hidden group`}>
-          <div className="absolute inset-0 bg-purple-500/5 group-hover:bg-purple-500/10 transition-colors" />
-          <Trophy className="w-5 h-5 md:w-6 md:h-6 text-purple-500 mb-2 md:mb-3" />
-          <div className={`text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-purple-600 to-purple-400`}>{analytics.productivityScore}</div>
-          <div className={`${themeConfig.textMuted} text-[10px] md:text-xs font-medium uppercase tracking-wider mt-1 text-center`}>Productividad</div>
-        </div>
-        
-        <div className={`card-glow p-4 md:p-5 flex flex-col items-center justify-center relative overflow-hidden group`}>
-          <div className="absolute inset-0 bg-orange-500/5 group-hover:bg-orange-500/10 transition-colors" />
-          <Flame className="w-5 h-5 md:w-6 md:h-6 text-orange-500 mb-2 md:mb-3" />
-          <div className={`text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-orange-600 to-orange-400`}>{gameData.user.streak}</div>
-          <div className={`${themeConfig.textMuted} text-[10px] md:text-xs font-medium uppercase tracking-wider mt-1 text-center`}>Días de racha</div>
-        </div>
-        
-        <div className={`card-glow p-4 md:p-5 flex flex-col items-center justify-center relative overflow-hidden group col-span-2 md:col-span-1`}>
-          <div className="absolute inset-0 bg-green-500/5 group-hover:bg-green-500/10 transition-colors" />
-          <Activity className="w-5 h-5 md:w-6 md:h-6 text-green-500 mb-2 md:mb-3" />
-          <div className={`text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-green-600 to-green-400`}>{analytics.totalHabits}</div>
-          <div className={`${themeConfig.textMuted} text-[10px] md:text-xs font-medium uppercase tracking-wider mt-1 text-center`}>Total Hábitos</div>
-        </div>
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Daily Activity Chart */}
-        <div className={`card-glow p-6`}>
-          <h3 className={`text-md font-bold mb-6 flex items-center gap-2 ${themeConfig.text}`}>
-            <Activity className="w-5 h-5 text-gray-400" />
-            Actividad Diaria
-          </h3>
-          <div className="space-y-3">
-            {analytics.dailyActivity.map((day, index) => (
-              <div key={index} className="flex items-center gap-3">
-                <div className={`w-12 text-sm ${themeConfig.textMuted}`}>{day.date}</div>
-                <div className="flex-1 bg-gray-200 rounded-full h-6">
-                  <div 
-                    className="bg-gradient-to-r from-brand-400 to-brand-600 h-6 rounded-full flex items-center justify-end pr-2 transition-all duration-500"
-                    style={{ width: `${Math.min(100, day.total * 10)}%` }}
-                  >
-                    <span className="text-xs text-white font-medium">{day.total}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+        <div className="relative z-10 w-full flex-1 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 text-center sm:text-left">
+          <div className="flex-shrink-0 relative">
+            <div className="absolute inset-0 bg-white/20 blur-xl rounded-full" />
+            <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 bg-white/10 backdrop-blur-md rounded-full border-[3px] border-white/30 shadow-2xl overflow-hidden flex items-center justify-center transform hover:scale-105 transition-transform duration-300">
+               <span className="text-3xl sm:text-4xl md:text-6xl font-black drop-shadow-md pb-1">
+                 {gameData.user?.name ? gameData.user.name.charAt(0).toUpperCase() : <Zap className="w-12 h-12 text-yellow-400 opacity-50" />}
+               </span>
+            </div>
+            {/* Medallita de nivel sobre el avatar */}
+            <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-yellow-400 to-yellow-600 text-yellow-900 font-black text-sm md:text-base px-3 py-1 rounded-full border-2 border-white shadow-lg">
+              Lv. {gameData.user?.level || 1}
+            </div>
           </div>
-          <div className={`mt-4 text-sm ${themeConfig.textMuted}`}>
-            Mejor día: <strong className={themeConfig.text}>{analytics.bestDay.date}</strong> con {analytics.bestDay.total} actividades
-          </div>
-        </div>
 
-        {/* Area Performance */}
-        <div className={`card-glow p-6`}>
-          <h3 className={`text-md font-bold mb-6 flex items-center gap-2 ${themeConfig.text}`}>
-            <PieChart className="w-5 h-5 text-gray-400" />
-            Rendimiento por Área
-          </h3>
-          <div className="space-y-3">
-            {analytics.areaPerformance
-              .sort((a, b) => b.progress - a.progress)
-              .slice(0, 6)
-              .map(area => (
-                <div key={area.id} className="flex items-center gap-3">
-                  <div className="w-8 text-lg">{getAreaIcon(area.id)}</div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className={`text-sm font-medium ${themeConfig.text}`}>
-                        {getAreaName(area.id)}
-                      </span>
-                      <span className={`text-sm ${themeConfig.textMuted}`}>{area.progress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-gradient-to-r from-green-400 to-green-600 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${area.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      </div>
+          <div className="flex-1 mt-2 sm:mt-0">
+            <h1 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight drop-shadow-sm mb-2">
+              {greeting}, {gameData.user?.name?.split(' ')[0] || 'Aventurero'}
+            </h1>
+            <p className="text-brand-100 text-sm sm:text-base md:text-xl max-w-lg font-medium leading-relaxed mb-6 drop-shadow-sm mx-auto sm:mx-0">
+              Tienes <strong className="text-white bg-white/10 px-1 md:px-2 py-0.5 rounded mx-0.5">{activeTasks.length} misiones urgentes</strong> y <strong className="text-white bg-white/10 px-1 md:px-2 py-0.5 rounded mx-0.5">{todayHabits.filter(h => !h.completedToday).length} hábitos vivos</strong>.
+            </p>
 
-      {/* Priority Performance */}
-      <div className={`${themeConfig.card} p-6 rounded-xl border ${themeConfig.border}`}>
-        <h3 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${themeConfig.text}`}>
-          <BarChart3 className="w-5 h-5 text-purple-600" />
-          Rendimiento por Prioridad
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {Object.entries(analytics.priorityStats).map(([priority, stats]) => {
-            const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
-            const priorityColors = {
-              high: 'from-red-400 to-red-600',
-              medium: 'from-yellow-400 to-yellow-600',
-              low: 'from-green-400 to-green-600'
-            };
-            const priorityNames = {
-              high: 'Alta',
-              medium: 'Media',
-              low: 'Baja'
-            };
-
-            return (
-              <div key={priority} className={`rounded-xl p-4 bg-gray-50/50 border ${themeConfig.border}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className={`font-semibold text-sm ${themeConfig.text}`}>{priorityNames[priority]}</span>
-                  <span className={`px-2 py-0.5 rounded-md text-xs font-bold bg-gradient-to-r ${priorityColors[priority]} text-white shadow-sm`}>
-                    {stats.completed}/{stats.total}
+            {/* Barras de Estado RPG Horizontales */}
+            <div className="flex flex-col sm:flex-row gap-3 md:gap-4 max-w-xl mx-auto sm:mx-0 w-full">
+              <div className="flex-1 bg-black/20 rounded-2xl p-3.5 backdrop-blur-md border border-white/10 shadow-inner group transition-all hover:bg-black/30">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] md:text-xs uppercase tracking-widest font-bold text-red-200 flex items-center gap-1.5">
+                    <Heart className={`w-3.5 h-3.5 md:w-4 md:h-4 ${isHpLow ? 'text-red-400 animate-pulse' : 'text-red-400'}`} /> 
+                    Vitalidad
                   </span>
+                  <span className="text-xs font-black font-mono tracking-wider">{currentHp}/{maxHp}</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden shadow-inner">
                   <div 
-                    className={`bg-gradient-to-r ${priorityColors[priority]} h-3 rounded-full transition-all duration-500`}
-                    style={{ width: `${completionRate}%` }}
+                    className={`h-full rounded-full transition-all duration-1000 ${isHpLow ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-gradient-to-r from-red-500 to-green-400'}`} 
+                    style={{ width: `${(currentHp / maxHp) * 100}%` }}
                   />
                 </div>
-                <div className={`text-sm ${themeConfig.textMuted}`}>
-                  {completionRate}% completado
+              </div>
+
+              <div className="flex-1 bg-black/20 rounded-2xl p-3.5 backdrop-blur-md border border-white/10 shadow-inner group transition-all hover:bg-black/30">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] md:text-xs uppercase tracking-widest font-bold text-blue-200 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-400" /> 
+                    Energía Diaria
+                  </span>
+                  <span className="text-xs font-black font-mono tracking-wider">{dailyProgress}%</span>
+                </div>
+                <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden shadow-inner">
+                  <div 
+                    className="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-blue-500 to-cyan-400 shadow-[0_0_10px_rgba(56,189,248,0.5)]" 
+                    style={{ width: `${dailyProgress}%` }}
+                  />
                 </div>
               </div>
-            );
-          })}
+            </div>
+          </div>
+        </div>
+
+        {/* Medallones a la derecha */}
+        <div className="relative z-10 flex gap-3 sm:gap-4 md:gap-5 flex-shrink-0 justify-center w-full lg:w-auto mt-4 lg:mt-0 lg:flex-col xl:flex-row">
+          <div className="flex-1 lg:flex-none bg-white/10 backdrop-blur-md rounded-[1.5rem] p-3 sm:p-4 md:p-6 flex flex-col items-center min-w-[90px] md:min-w-[100px] border border-white/20 shadow-xl hover:bg-white/20 transition-all cursor-default hover:-translate-y-1">
+            <Coins className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 text-yellow-300 mb-1 sm:mb-2 drop-shadow-md" />
+            <span className="text-2xl sm:text-3xl md:text-4xl font-black drop-shadow-md">{gameData.user?.coins || 0}</span>
+            <span className="text-[10px] md:text-xs uppercase tracking-widest text-brand-100 font-bold mt-1 opacity-80">Monedas</span>
+          </div>
+          <div className="flex-1 lg:flex-none bg-white/10 backdrop-blur-md rounded-[1.5rem] p-3 sm:p-4 md:p-6 flex flex-col items-center min-w-[90px] md:min-w-[100px] border border-white/20 shadow-xl hover:bg-white/20 transition-all cursor-default hover:-translate-y-1">
+            <Flame className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 text-orange-400 mb-1 sm:mb-2 drop-shadow-md" />
+            <span className="text-2xl sm:text-3xl md:text-4xl font-black drop-shadow-md">{gameData.user?.streak || 0}</span>
+            <span className="text-[10px] md:text-xs uppercase tracking-widest text-brand-100 font-bold mt-1 opacity-80">Racha</span>
+          </div>
         </div>
       </div>
 
-      {/* Insights */}
-      <div className={`${themeConfig.card} p-6 rounded-xl border ${themeConfig.border}`}>
-        <h3 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${themeConfig.text}`}>
-          <Star className="w-5 h-5 text-yellow-600" />
-          Insights y Recomendaciones
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className={`${themeConfig.bg} rounded-lg p-4 border ${themeConfig.border}`}>
-            <h4 className={`font-medium mb-2 ${themeConfig.text}`}>📈 Tendencia Positiva</h4>
-            <p className={`text-sm ${themeConfig.textMuted}`}>
-              Has completado {analytics.completedTasks} tareas este {timeRange === 'week' ? 'semana' : timeRange === 'month' ? 'mes' : 'año'}. 
-              ¡Sigue así!
-            </p>
+      {/* Grid de 3 Columnas para llenar el espacio de forma inteligente */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 md:gap-8">
+        
+        {/* Columna 1: Hábitos (Ocupa 4 columnas de 12 en LG) */}
+        <div className="lg:col-span-4 space-y-5">
+          <div className="flex items-center justify-between px-2">
+            <h2 className={`text-xl font-black tracking-tight flex items-center gap-2 ${themeConfig.text}`}>
+              <Clock className="w-5 h-5 text-brand-500" />
+              Rutina Diaria
+            </h2>
+            {setActiveSection && (
+              <button 
+                onClick={() => setActiveSection('habits')}
+                className="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-full"
+              >
+                Todas
+              </button>
+            )}
           </div>
-          
-          <div className={`${themeConfig.bg} rounded-lg p-4 border ${themeConfig.border}`}>
-            <h4 className={`font-medium mb-2 ${themeConfig.text}`}>🎯 Área Destacada</h4>
-            <p className={`text-sm ${themeConfig.textMuted}`}>
-              Tu mejor área es {
-                analytics.areaPerformance.reduce((best, area) => 
-                  area.progress > best.progress ? area : best
-                ).name
-              } con {
-                Math.max(...analytics.areaPerformance.map(a => a.progress))
-              }% de progreso.
-            </p>
-          </div>
-          
-          <div className={`${themeConfig.bg} rounded-lg p-4 border ${themeConfig.border}`}>
-            <h4 className={`font-medium mb-2 ${themeConfig.text}`}>⚡ Productividad</h4>
-            <p className={`text-sm ${themeConfig.textMuted}`}>
-              Tu score de productividad es {analytics.productivityScore}. 
-              {analytics.productivityScore > 50 ? ' ¡Excelente rendimiento!' : ' Hay espacio para mejorar.'}
-            </p>
-          </div>
-          
-          <div className={`${themeConfig.bg} rounded-lg p-4 border ${themeConfig.border}`}>
-            <h4 className={`font-medium mb-2 ${themeConfig.text}`}>🔥 Motivación</h4>
-            <p className={`text-sm ${themeConfig.textMuted}`}>
-              Llevas {gameData.user.streak} días de racha. 
-              {gameData.user.streak > 7 ? ' ¡Eres increíblemente consistente!' : ' Mantén la constancia!'}
-            </p>
+
+          <div className="space-y-3">
+            {todayHabits.length > 0 ? (
+              todayHabits.map(habit => (
+                <div 
+                  key={habit.id}
+                  onClick={() => setActiveSection && setActiveSection('habits')}
+                  className={`group ${themeConfig.card} rounded-2xl p-4 border ${themeConfig.border} shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex items-center gap-4 ${habit.completedToday ? 'opacity-50 bg-gray-50/50 scale-[0.98]' : 'hover:-translate-y-1'}`}
+                >
+                  <div className="flex-shrink-0">
+                    {habit.completedToday ? (
+                      <CheckCircle className="w-7 h-7 text-green-500" />
+                    ) : (
+                      <Circle className="w-7 h-7 text-gray-200 group-hover:text-green-400 group-hover:scale-110 transition-all" />
+                    )}
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center text-2xl flex-shrink-0 shadow-sm border border-gray-200/60 group-hover:shadow-md transition-all">
+                    {habit.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className={`font-bold text-[15px] truncate ${habit.completedToday ? 'text-gray-400 line-through decoration-2' : themeConfig.text}`}>{habit.name}</h3>
+                  </div>
+                  <div className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-orange-50/80 text-orange-600 rounded-lg text-xs font-black border border-orange-100/50 group-hover:bg-orange-100 transition-colors">
+                    <Flame className="w-3.5 h-3.5" />
+                    {habit.streak}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className={`${themeConfig.card} rounded-3xl p-8 border-2 border-dashed ${themeConfig.border} text-center flex flex-col items-center justify-center h-48`}>
+                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-3">
+                  <CheckCircle className="w-8 h-8 text-gray-300" />
+                </div>
+                <p className={`${themeConfig.textMuted} font-bold text-[15px]`}>Día libre</p>
+                <p className="text-gray-400 text-xs mt-1 font-medium">Ningún hábito pendiente</p>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Columna 2: Misiones/Tareas (Ocupa 5 columnas de 12 en LG) - El centro neurálgico */}
+        <div className="lg:col-span-5 space-y-5">
+          <div className="flex items-center justify-between px-2">
+            <h2 className={`text-xl font-black tracking-tight flex items-center gap-2 ${themeConfig.text}`}>
+              <Target className="w-5 h-5 text-brand-500" />
+              Misiones Activas
+            </h2>
+            {setActiveSection && (
+              <button 
+                onClick={() => setActiveSection('tasks')}
+                className="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-full"
+              >
+                Inventario <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            {activeTasks.length > 0 ? (
+              activeTasks.map(task => (
+                <div 
+                  key={task.id}
+                  onClick={() => setActiveSection && setActiveSection('tasks')}
+                  className={`group ${themeConfig.card} rounded-[1.5rem] p-5 border ${themeConfig.border} shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col gap-3 hover:-translate-y-1 relative overflow-hidden`}
+                >
+                  {/* Borde izquierdo decorativo para tareas urgentes */}
+                  {task.urgency === 'urgent' && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-red-500" />
+                  )}
+                  
+                  <div className="flex items-start gap-4">
+                    <div className="mt-0.5 flex-shrink-0">
+                      <Circle className="w-6 h-6 text-gray-200 group-hover:text-brand-400 group-hover:scale-110 transition-all font-bold" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`font-bold text-base leading-snug pr-8 ${themeConfig.text}`}>{task.title}</h3>
+                      <p className="text-gray-400 text-xs mt-1 truncate font-medium">
+                        {task.notes ? task.notes : (task.dueDate ? `Vence el ${new Date(task.dueDate).toLocaleDateString()}` : 'Sin notas adiconales')}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center justify-between gap-2 mt-1 pl-10">
+                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${getPriorityColor(task.priority, task.urgency, task.importance)}`}>
+                      {priorityLabel(task)}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-yellow-600 bg-yellow-50/80 px-2.5 py-1 rounded-lg font-black text-[11px] border border-yellow-100 shadow-sm">
+                      <Zap className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />
+                      +{task.xp} XP
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className={`${themeConfig.card} rounded-3xl p-8 border-2 border-dashed ${themeConfig.border} text-center flex flex-col items-center justify-center h-48 lg:h-72`}>
+                <div className="w-20 h-20 bg-gray-50 rounded-2xl rotate-3 flex items-center justify-center mb-4 border border-gray-100 shadow-sm">
+                  <Trophy className="w-10 h-10 text-gray-300 -rotate-3" />
+                </div>
+                <p className={`${themeConfig.textMuted} font-bold text-lg`}>Zona Despejada</p>
+                <p className="text-gray-400 text-sm mt-1 max-w-xs mx-auto">Has completado todas tus misiones principales. Ve a Explorar para añadir nuevas.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Columna 3: Recompensas (Ocupa 3 columnas de 12 en LG) - Novedad Visual */}
+        <div className="md:col-span-2 lg:col-span-3 space-y-5">
+           <div className="flex items-center justify-between px-2">
+            <h2 className={`text-xl font-black tracking-tight flex items-center gap-2 ${themeConfig.text}`}>
+              <Gift className="w-5 h-5 text-purple-500" />
+              Bazar
+            </h2>
+            {setActiveSection && (
+              <button 
+                onClick={() => setActiveSection('rewards')}
+                className="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-full"
+              >
+                Tienda
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-1 gap-4">
+            {affordableRewards.length > 0 ? (
+              affordableRewards.map(reward => {
+                const canAfford = (gameData.user?.coins || 0) >= reward.cost;
+                return (
+                  <div 
+                    key={reward.id}
+                    onClick={() => setActiveSection && setActiveSection('rewards')}
+                    className={`group ${themeConfig.card} rounded-[1.5rem] p-3 sm:p-4 border ${themeConfig.border} shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col items-center text-center gap-2 sm:gap-3 hover:-translate-y-1`}
+                  >
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center text-2xl sm:text-3xl shadow-inner border border-purple-100/50 group-hover:scale-110 transition-transform">
+                      {reward.icon || '🎁'}
+                    </div>
+                    <div className="w-full">
+                      <h3 className={`font-bold text-xs sm:text-[14px] leading-tight mb-1sm:mb-1.5 line-clamp-2 ${themeConfig.text}`}>{reward.name}</h3>
+                      <div className={`inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-black mt-1 ${canAfford ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
+                        <Coins className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+                        {reward.cost}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className={`${themeConfig.card} col-span-2 md:col-span-4 lg:col-span-1 rounded-3xl p-6 border-2 border-dashed ${themeConfig.border} text-center flex flex-col items-center justify-center h-48`}>
+                <Gift className="w-10 h-10 text-gray-300 mb-2 opacity-50" />
+                <p className="text-gray-400 text-xs font-bold leading-relaxed px-4">Agrega recompensas a la tienda para motivarte</p>
+                {setActiveSection && (
+                  <button onClick={() => setActiveSection('rewards')} className="mt-3 text-[11px] font-bold text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-100">
+                    Añadir Premio
+                  </button>
+                )}
+              </div>
+            )}
+           </div>
+
+            {/* Banner de motivación extra si sobra espacio */}
+            <div className={`mt-4 sm:mt-6 rounded-3xl p-5 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 relative overflow-hidden group hover:from-indigo-100 hover:to-purple-100 transition-colors cursor-pointer w-full`} onClick={() => setActiveSection && setActiveSection('profile')}>
+               <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                 <Trophy className="w-20 h-20 sm:w-24 sm:h-24 text-indigo-900" />
+               </div>
+               <div className="relative z-10">
+                 <p className="text-[10px] sm:text-[11px] uppercase tracking-widest font-black text-indigo-400 mb-1">Tu Rango Actual</p>
+                 <h4 className="text-base sm:text-lg font-black text-indigo-900 leading-tight pr-12">Sigue tu camino de héroe</h4>
+                 <div className="mt-2 sm:mt-3 inline-flex items-center text-xs font-bold text-indigo-600 group-hover:text-indigo-800">
+                   Ver Perfil <ArrowRight className="w-3 h-3 ml-1" />
+                 </div>
+               </div>
+            </div>
+        </div>
+
       </div>
     </div>
   );
 }
 
 export default Dashboard;
+

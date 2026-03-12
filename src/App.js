@@ -90,7 +90,7 @@ function AppContent() {
 
   const renderSection = () => {
     switch(activeSection) {
-      case 'dashboard':    return <Dashboard addNotification={addNotification} />;
+      case 'dashboard':    return <Dashboard addNotification={addNotification} setActiveSection={setActiveSection} />;
       case 'tasks':        return <Tasks addNotification={addNotification} />;
       case 'habits':       return <Habits addNotification={addNotification} />;
       case 'rewards':      return <Rewards addNotification={addNotification} />;
@@ -101,7 +101,7 @@ function AppContent() {
       case 'bossBattles':  return <BossBattles addNotification={addNotification} />;
       case 'notifications':return <NotificationsPage />;
       case 'profile':      return <Profile addNotification={addNotification} />;
-      default:             return <Dashboard addNotification={addNotification} />;
+      default:             return <Dashboard addNotification={addNotification} setActiveSection={setActiveSection} />;
     }
   };
 

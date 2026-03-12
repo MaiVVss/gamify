@@ -30,6 +30,7 @@ const initialGameData = {
     maxHp: 100,
     isDead: false,
     lastHpDecayDate: null,
+    lastHabitResetDate: null,
     // Sistema de personalización
     avatar: {
       style: 'adventurer',
@@ -286,6 +287,34 @@ export const DataProvider = ({ children, authUser }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameData.user?.lastHpDecayDate]);
+
+  // ── Reinicio diario de hábitos: asegurar que los hábitos con frecuencia 'Diario' se reinicien cada día
+  useEffect(() => {
+    if (!gameData) return;
+    const today = new Date().toDateString();
+    const lastReset = gameData.user?.lastHabitResetDate;
+    if (lastReset === today) return; // ya reiniciado hoy
+
+    const currentHabits = gameData.habits || [];
+    const newHabits = currentHabits.map(h => {
+      // Solo resetear flags diarios para hábitos con frecuencia 'Diario'
+      if (h.frequency === 'Diario') {
+        // Evitar cambiar otras propiedades
+        return { ...h, completedToday: false, earnedXP: 0, earnedCoins: 0 };
+      }
+      return h;
+    });
+
+    // Actualizar la fecha de reinicio y persistir cambios
+    setGameData(prev => ({
+      ...prev,
+      habits: newHabits,
+      user: { ...prev.user, lastHabitResetDate: today }
+    }));
+
+    addNotification('🔄 Reinicio diario de hábitos ejecutado', 'info');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameData?.habits, gameData?.user?.lastHabitResetDate]);
 
   // Restaurar HP al completar tareas/hábitos (máx +5 HP por acción)
   const healHp = (amount = 5) => {

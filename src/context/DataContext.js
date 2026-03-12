@@ -77,11 +77,15 @@ export const DataProvider = ({ children, authUser }) => {
     return savedData ? JSON.parse(savedData) : initialGameData;
   });
   const [firestoreLoading, setFirestoreLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false); // Flag to prevent saving local data to firebase before loading
   const lastSavedRef = useRef(null);
 
   // ── Cargar datos desde Firestore cuando el usuario hace login ──────────
   useEffect(() => {
-    if (!authUser?.uid) return;
+    if (!authUser?.uid) {
+      setIsInitialized(false);
+      return;
+    }
     setFirestoreLoading(true);
     const userDocRef = doc(db, 'users', authUser.uid);
     getDoc(userDocRef).then((snap) => {
@@ -106,28 +110,41 @@ export const DataProvider = ({ children, authUser }) => {
           }
         }));
       } else {
-        // Primera vez: inicializa con datos fresh + info de Google
-        const freshData = {
-          ...initialGameData,
-          user: {
-            ...initialGameData.user,
-            googleName: authUser.displayName,
-            googleEmail: authUser.email,
-            googlePhoto: authUser.photoURL,
-            avatar: {
-              ...initialGameData.user.avatar,
-              seed: authUser.uid.slice(0, 8)
+        // Primera vez en Firestore: mantener el progreso local (prev) en lugar de initialGameData
+        setGameData(prev => {
+          const freshData = {
+            ...prev,
+            user: {
+              ...prev.user,
+              googleName: authUser.displayName,
+              googleEmail: authUser.email,
+              googlePhoto: authUser.photoURL,
+              avatar: {
+                ...(prev.user?.avatar || initialGameData.user.avatar),
+                seed: authUser.uid.slice(0, 8)
+              }
             }
-          }
-        };
-        setGameData(freshData);
-        setDoc(userDocRef, freshData).catch(console.error);
+          };
+          // Initialize in DB immediately, stripping any undefineds
+          const dataToSave = JSON.parse(JSON.stringify(freshData));
+          setDoc(userDocRef, dataToSave).catch(console.error);
+          return freshData;
+        });
       }
       setFirestoreLoading(false);
+      setIsInitialized(true);
+      addNotification('Sincronización inicial exitosa', 'success');
     }).catch((err) => {
       console.error('Error loading Firestore data:', err);
       setFirestoreLoading(false);
+      setIsInitialized(true); // Always initialize to allow normal operation even on error
+      if (err.message && err.message.toLowerCase().includes('permission')) {
+        addNotification('❌ Error Firebase: Permisos denegados. Posiblemente las reglas de tu base de datos expiraron.', 'error');
+      } else {
+        addNotification('❌ Error al cargar tu progreso de la nube', 'error');
+      }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.uid]);
 
   // ── Guardar en Firestore + localStorage con debounce ───────────────────
@@ -136,8 +153,9 @@ export const DataProvider = ({ children, authUser }) => {
     // Siempre guardar en localStorage como cache
     localStorage.setItem('gameData', JSON.stringify(gameData));
 
-    // Solo guardar en Firestore si hay usuario autenticado y datos cambiaron
-    if (!authUser?.uid || firestoreLoading) return;
+    // Solo guardar en Firestore si hay usuario autenticado, datos cambiaron, Y ya terminó de cargar la DB inicialmente
+    if (!authUser?.uid || firestoreLoading || !isInitialized) return;
+
     const serialized = JSON.stringify(gameData);
     if (serialized === lastSavedRef.current) return;
 
@@ -146,13 +164,28 @@ export const DataProvider = ({ children, authUser }) => {
     saveTimeoutRef.current = setTimeout(() => {
       lastSavedRef.current = serialized;
       const userDocRef = doc(db, 'users', authUser.uid);
-      setDoc(userDocRef, gameData, { merge: false }).catch(console.error);
+      // Firebase throws an error if any nested field is 'undefined'.
+      // By using JSON.parse(serialized), we safely strip all undefined values.
+      const dataToSave = JSON.parse(serialized);
+      setDoc(userDocRef, dataToSave, { merge: false })
+        .then(() => {
+          console.log("Guardo en Firebase correcto");
+        })
+        .catch(err => {
+          console.error("Firebase sync error:", err);
+          if (err.message && err.message.toLowerCase().includes('permission')) {
+            addNotification('❌ Error de Guardado: No tienes permisos en Firestore.', 'error');
+          } else {
+            addNotification('❌ Falló el respaldo en la nube', 'error');
+          }
+        });
     }, 1500);
 
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [gameData, authUser?.uid, firestoreLoading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameData, authUser?.uid, firestoreLoading, isInitialized]);
 
   // Calcular nivel basado en XP
   const calculateLevel = (xp) => {
@@ -165,12 +198,12 @@ export const DataProvider = ({ children, authUser }) => {
       // Si updates es una función, ejecutarla con el estado anterior
       const updatesToApply = typeof updates === 'function' ? updates(prevData) : updates;
       const newData = { ...prevData, ...updatesToApply };
-      
+
       // Recalcular nivel si cambió el XP
       if (updatesToApply.user?.xp !== undefined) {
         newData.user.level = calculateLevel(updatesToApply.user.xp);
       }
-      
+
       return newData;
     });
   };
@@ -251,7 +284,7 @@ export const DataProvider = ({ children, authUser }) => {
         user: { ...prev.user, lastHpDecayDate: today }
       }));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameData.user?.lastHpDecayDate]);
 
   // Restaurar HP al completar tareas/hábitos (máx +5 HP por acción)
@@ -453,7 +486,7 @@ export const DataProvider = ({ children, authUser }) => {
           Object.values(allAchievements).forEach(category => {
             if (category[achId]) achData = category[achId];
           });
-          
+
           if (achData) {
             addNotification(`🏆 ¡Logro Desbloqueado: ${achData.name}!`, 'achievement', `+${achData.xp} XP · +${achData.coins} monedas`);
             // Otorgar las recompensas del logro con spread completo para no perder datos
@@ -482,37 +515,37 @@ export const DataProvider = ({ children, authUser }) => {
     setGameData(prevData => {
       const newData = { ...prevData };
       const areaIndex = newData.lifeAreas.findIndex(area => area.id === areaId);
-      
+
       if (areaIndex !== -1) {
         const area = newData.lifeAreas[areaIndex];
         const oldProgress = area.progress;
         const newProgress = Math.min(100, oldProgress + progressIncrease);
-        
+
         newData.lifeAreas[areaIndex] = {
           ...area,
           progress: newProgress,
           targetProgress: newProgress
         };
-        
+
         // Verificar si se completaron milestones
         const oldLevel = Math.floor(oldProgress / 20) + 1;
         const newLevel = Math.floor(newProgress / 20) + 1;
-        
+
         if (newLevel > oldLevel) {
           // Bonificación por subir de nivel en área de vida
           const milestoneBonus = newLevel * 50;
           newData.user.xp += milestoneBonus;
           newData.user.coins += Math.floor(milestoneBonus / 2);
-          
-          addNotification(`🎉 ¡${areaId === 'health' ? 'Salud' : 
-            areaId === 'career' ? 'Carrera' : 
-            areaId === 'relationships' ? 'Relaciones' : 
-            areaId === 'personal' ? 'Personal' : 
-            areaId === 'finances' ? 'Finanzas' : 'Hogar'} 
+
+          addNotification(`🎉 ¡${areaId === 'health' ? 'Salud' :
+            areaId === 'career' ? 'Carrera' :
+              areaId === 'relationships' ? 'Relaciones' :
+                areaId === 'personal' ? 'Personal' :
+                  areaId === 'finances' ? 'Finanzas' : 'Hogar'} 
             alcanzó nivel ${newLevel}! +${milestoneBonus} XP +${Math.floor(milestoneBonus / 2)} coins`, 'success');
         }
       }
-      
+
       return newData;
     });
   };
@@ -522,13 +555,13 @@ export const DataProvider = ({ children, authUser }) => {
     setGameData(prevData => {
       const newData = { ...prevData };
       const areaIndex = newData.lifeAreas.findIndex(area => area.id === areaId);
-      
+
       if (areaIndex !== -1) {
         const area = newData.lifeAreas[areaIndex];
         const objectiveProgress = area.objectiveProgress || {};
         const currentProgress = objectiveProgress[objectiveId] || 0;
         const newProgress = Math.min(100, currentProgress + progressIncrease);
-        
+
         newData.lifeAreas[areaIndex] = {
           ...area,
           objectiveProgress: {
@@ -536,29 +569,29 @@ export const DataProvider = ({ children, authUser }) => {
             [objectiveId]: newProgress
           }
         };
-        
+
         // Si el objetivo llega a 100%, marcarlo como completado y dar recompensas
         if (newProgress >= 100 && !area.completedObjectives.includes(objectiveId)) {
           newData.lifeAreas[areaIndex] = {
             ...newData.lifeAreas[areaIndex],
             completedObjectives: [...area.completedObjectives, objectiveId]
           };
-          
+
           // Recompensas por objetivo (mismo sistema para todas las áreas)
           const objectiveRewards = {
             1: { xp: 50, coins: 25 }, 2: { xp: 30, coins: 15 }, 3: { xp: 25, coins: 12 },
             4: { xp: 20, coins: 10 }, 5: { xp: 30, coins: 15 }
           };
-          
+
           const reward = objectiveRewards[objectiveId];
           if (reward) {
             newData.user.xp = (newData.user.xp || 0) + reward.xp;
             newData.user.coins = (newData.user.coins || 0) + reward.coins;
           }
-          
+
           // Actualizar progreso del área (10% por objetivo completado)
           updateLifeAreaProgress(areaId, 10);
-          
+
           // Nombres de objetivos por área
           const areaObjectiveNames = {
             health: { 1: 'Perder peso', 2: 'Correr 10km', 3: 'Dormir 8h', 4: 'Beber 2L agua', 5: 'Meditar diario' },
@@ -568,14 +601,14 @@ export const DataProvider = ({ children, authUser }) => {
             finances: { 1: 'Ahorro $1000', 2: 'Ingresos extra', 3: 'Invertir', 4: 'Presupuesto', 5: 'Deuda cero' },
             home: { 1: 'Casa ordenada', 2: 'Decorar habitación', 3: 'Jardín', 4: 'Reparaciones', 5: 'Minimalismo' }
           };
-          
+
           const objectiveName = areaObjectiveNames[areaId]?.[objectiveId];
           if (objectiveName && reward) {
             addNotification(`🎯 ¡Objetivo "${objectiveName}" completado! +${reward.xp} XP +${reward.coins} coins`, 'success');
           }
         }
       }
-      
+
       return newData;
     });
   };
@@ -583,18 +616,18 @@ export const DataProvider = ({ children, authUser }) => {
     setGameData(prevData => {
       const newData = { ...prevData };
       const areaIndex = newData.lifeAreas.findIndex(area => area.id === areaId);
-      
+
       if (areaIndex !== -1) {
         const area = newData.lifeAreas[areaIndex];
         const completedObjectives = area.completedObjectives || [];
-        
+
         // Solo añadir si no está ya completado
         if (!completedObjectives.includes(objectiveId)) {
           newData.lifeAreas[areaIndex] = {
             ...area,
             completedObjectives: [...completedObjectives, objectiveId]
           };
-          
+
           // Dar recompensas por completar objetivo
           const objectiveRewards = {
             1: { xp: 20, coins: 10 }, 2: { xp: 15, coins: 8 }, 3: { xp: 15, coins: 8 },
@@ -608,18 +641,18 @@ export const DataProvider = ({ children, authUser }) => {
             25: { xp: 25, coins: 12 }, 26: { xp: 15, coins: 8 }, 27: { xp: 10, coins: 5 },
             28: { xp: 20, coins: 10 }, 29: { xp: 15, coins: 8 }, 30: { xp: 15, coins: 8 }
           };
-          
+
           const reward = objectiveRewards[objectiveId];
           if (reward) {
             newData.user.xp += reward.xp;
             newData.user.coins += reward.coins;
           }
-          
+
           // Actualizar progreso del área (8% por objetivo)
           updateLifeAreaProgress(areaId, 8);
         }
       }
-      
+
       return newData;
     });
   };
@@ -668,7 +701,7 @@ export const DataProvider = ({ children, authUser }) => {
   const checkLevelUp = (newXP) => {
     const currentLevel = rankSystem.levels.find(level => gameData.user.xp >= level.minXP && gameData.user.xp < level.maxXP);
     const newLevel = rankSystem.levels.find(level => newXP >= level.minXP && newXP < level.maxXP);
-    
+
     if (newLevel && newLevel.level > (currentLevel?.level || 1)) {
       addNotification(`${newLevel.icon} ¡Subiste al Nivel ${newLevel.level}!`, 'levelup', newLevel.title);
       return newLevel;
@@ -772,7 +805,7 @@ export const DataProvider = ({ children, authUser }) => {
     const seed = avatar?.seed || 'default';
     const style = avatar?.style || 'adventurer';
     const bg = avatar?.backgroundColor || 'b6e3f4';
-    
+
     // Usar DiceBear API para generar avatares
     return `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=${bg}&size=${size}`;
   };

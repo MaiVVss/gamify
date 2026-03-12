@@ -770,3 +770,32 @@
     font-size: 20px !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BOSS BATTLES — Card animations
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Fly-to-top: fired when a grid card is clicked, it scales up briefly
+   then flies upward and fades out before the featured panel appears */
+@keyframes bossCardFly {
+  0%   { transform: translateY(0) scale(1);    opacity: 1; }
+  25%  { transform: translateY(-8px) scale(1.06); opacity: 1; }
+  100% { transform: translateY(-80px) scale(0.7); opacity: 0; }
+}
+
+.boss-card-fly {
+  animation: bossCardFly 0.38s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+  z-index: 50;
+  position: relative;
+}
+
+/* Entrance: the featured panel slides down + fades in */
+@keyframes bossFeaturedIn {
+  from { transform: translateY(-18px); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+.boss-featured-in {
+  animation: bossFeaturedIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../context/DataContext';
-import { 
-  Sword, 
-  Shield, 
-  Heart, 
-  Zap, 
-  Skull, 
-  Trophy, 
-  Star, 
+import {
+  Sword,
+  Shield,
+  Heart,
+  Zap,
+  Skull,
+  Trophy,
+  Star,
   AlertTriangle,
   CheckCircle,
   Target,
@@ -130,10 +130,10 @@ const bossBattles = {
 const calculateDynamicBoss = (baseBoss, playerLevel, playerStats) => {
   const progressMultiplier = 1 + (playerLevel - 1) * 0.25; // 25% más difícil por nivel
   const experienceMultiplier = Math.max(0.7, Math.min(2.0, (playerStats.totalHabitsCompleted || 0) / 30)); // Basado en experiencia
-  
+
   // Ajustar la dificultad del reto según nivel
   const adjustedChallenge = { ...baseBoss.challenge };
-  
+
   switch (baseBoss.challenge.type) {
     case 'pomodoro':
       adjustedChallenge.duration = Math.round(baseBoss.challenge.duration * (1 + (playerLevel - 1) * 0.2));
@@ -158,14 +158,14 @@ const calculateDynamicBoss = (baseBoss, playerLevel, playerStats) => {
       adjustedChallenge.duration = Math.round(baseBoss.challenge.duration * (1 + (playerLevel - 1) * 0.2));
       break;
   }
-  
+
   // Determinar la dificultad visual
   let difficultyLevel = 'medium';
   if (playerLevel <= 2) difficultyLevel = 'medium';
   else if (playerLevel <= 4) difficultyLevel = 'hard';
   else if (playerLevel <= 6) difficultyLevel = 'extreme';
   else difficultyLevel = 'legendary';
-  
+
   const dynamicBoss = {
     ...baseBoss,
     challenge: adjustedChallenge,
@@ -174,14 +174,14 @@ const calculateDynamicBoss = (baseBoss, playerLevel, playerStats) => {
     progressMultiplier,
     experienceMultiplier
   };
-  
+
   // Ajustar recompensas según dificultad y nivel
   dynamicBoss.rewards = {
     ...baseBoss.rewards,
     xp: Math.round(baseBoss.rewards.xp * progressMultiplier * experienceMultiplier),
     coins: Math.round(baseBoss.rewards.coins * progressMultiplier * experienceMultiplier)
   };
-  
+
   return dynamicBoss;
 };
 
@@ -218,14 +218,61 @@ const getVictoryCondition = (bossId, playerLevel) => {
       level5: { type: 'none', requirement: 0, description: 'Sin requisitos' }
     }
   };
-  
+
   const levelKey = `level${Math.min(playerLevel, 5)}`;
   return baseConditions[bossId]?.[levelKey] || baseConditions.default[levelKey];
+};
+
+const bossTips = {
+  procrastination: [
+    "• Divide la tarea principal en micro-pasos de 5 minutos",
+    "• Aplica la regla de los 2 minutos: si toma menos de eso, hazlo ya",
+    "• Elimina las fricciones preparando tu espacio de trabajo previamente",
+    "• Celebra los pequeños avances en lugar de esperar al resultado final",
+    "• Visualiza las consecuencias negativas de no hacer la tarea hoy"
+  ],
+  distraction: [
+    "• Guarda tu teléfono en otra habitación",
+    "• Usa bloqueadores de sitios web o aplicaciones",
+    "• Desactiva todas las notificaciones no esenciales",
+    "• Usa ruido blanco o música instrumental para enfocarte",
+    "• Mantén un block de notas física para anotar ideas sin perder foco"
+  ],
+  laziness: [
+    "• Comprométete a solo 5 minutos de actividad",
+    "• Prepara tu ropa deportiva o equipo desde temprano",
+    "• Pon música energética para romper la inercia",
+    "• Empieza siempre con estiramientos simples",
+    "• Asocia el ejercicio con algo que disfrutes como un podcast"
+  ],
+  perfectionism: [
+    "• Fija límites de tiempo estrictos para cada tarea",
+    "• Enfócate en la regla 80/20 (el 20% del esfuerzo da el 80% del resultado)",
+    "• Acepta que el primer borrador siempre será imperfecto",
+    "• Define claramente qué significa 'terminado' antes de empezar",
+    "• Recuerda siempre que hecho es mejor que perfecto"
+  ],
+  fear: [
+    "• Pregúntate: ¿Qué es lo peor que podría pasar en realidad?",
+    "• Define un 'plan B' para reducir la ansiedad y el estrés",
+    "• Recuerda fracasos pasados de los que lograste aprender",
+    "• Cambia el enfoque de 'no fallar' a 'aprender algo nuevo'",
+    "• Acostúmbrate a estar incómodo en situaciones controladas"
+  ],
+  burnout: [
+    "• Desconéctate por completo de todas las pantallas",
+    "• Establece límites claros entre tu momento de trabajo y descanso",
+    "• Prioriza un buen descanso sobre cualquier otra actividad productiva",
+    "• Dedica al menos 5 minutos para practicar la respiración profunda",
+    "• Aprende a decir que no a nuevas e irrelevantes responsabilidades"
+  ]
 };
 
 function BossBattles({ addNotification }) {
   const { gameData, updateGameData } = useData();
   const [activeChallenge, setActiveChallenge] = useState(null);
+  const [selectedBossId, setSelectedBossId] = useState(null);
+  const [animatingBossId, setAnimatingBossId] = useState(null);
   const [challengeLog, setChallengeLog] = useState([]);
   const [challengeStartTime, setChallengeStartTime] = useState(null);
   const [challengeProgress, setChallengeProgress] = useState(0);
@@ -233,7 +280,7 @@ function BossBattles({ addNotification }) {
   const [unlockedBosses, setUnlockedBosses] = useState(['procrastination']); // Primer boss desbloqueado
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
-  
+
   // Estados para el Pomodoro (declarados aquí antes de usarlos)
   const [pomodoroPhase, setPomodoroPhase] = useState('work'); // 'work', 'short_break', 'long_break'
   const [pomodoroSession, setPomodoroSession] = useState(1); // Número de sesión actual
@@ -244,37 +291,37 @@ function BossBattles({ addNotification }) {
   useEffect(() => {
     const checkUnlockConditions = () => {
       const newUnlocked = [...unlockedBosses];
-      
+
       // Desbloquear Distraction si tiene hábitos de focus
-      const hasFocusHabits = gameData.habits?.some(h => 
-        h.name.toLowerCase().includes('meditar') || 
+      const hasFocusHabits = gameData.habits?.some(h =>
+        h.name.toLowerCase().includes('meditar') ||
         h.name.toLowerCase().includes('focus') ||
         h.name.toLowerCase().includes('concentración')
       );
       if (hasFocusHabits && !unlockedBosses.includes('distraction')) {
         newUnlocked.push('distraction');
       }
-      
+
       // Desbloquear Pereza si tiene hábitos de ejercicio
-      const hasExerciseHabits = gameData.habits?.some(h => 
-        h.name.toLowerCase().includes('ejercicio') || 
+      const hasExerciseHabits = gameData.habits?.some(h =>
+        h.name.toLowerCase().includes('ejercicio') ||
         h.name.toLowerCase().includes('gimnasio') ||
         h.name.toLowerCase().includes('correr')
       );
       if (hasExerciseHabits && !unlockedBosses.includes('laziness')) {
         newUnlocked.push('laziness');
       }
-      
+
       // Desbloquear Perfeccionismo si tiene tareas
       if (gameData.tasks?.length > 5 && !unlockedBosses.includes('perfectionism')) {
         newUnlocked.push('perfectionism');
       }
-      
+
       // Desbloquear Miedo si tiene nivel alto
       if (gameData.user?.level >= 3 && !unlockedBosses.includes('fear')) {
         newUnlocked.push('fear');
       }
-      
+
       if (newUnlocked.length > unlockedBosses.length) {
         setUnlockedBosses(newUnlocked);
         const newBoss = newUnlocked[newUnlocked.length - 1];
@@ -282,7 +329,7 @@ function BossBattles({ addNotification }) {
         addNotification(`🔓 Nuevo boss desbloqueado: ${boss.title}!`, 'success');
       }
     };
-    
+
     checkUnlockConditions();
   }, [gameData, unlockedBosses, addNotification]);
 
@@ -294,11 +341,11 @@ function BossBattles({ addNotification }) {
         const now = Date.now();
         const elapsed = Math.floor((now - challengeStartTime) / 1000);
         setElapsedTime(elapsed);
-        
+
         // Si es un desafío Pomodoro activo
         if (showPomodoro && activeChallenge?.challenge?.type === 'pomodoro') {
           const phaseDuration = pomodoroConfig[pomodoroPhase];
-          
+
           if (elapsed >= phaseDuration) {
             handlePomodoroPhaseChange();
           }
@@ -317,19 +364,19 @@ function BossBattles({ addNotification }) {
     const baseBoss = bossBattles[bossId];
     const playerLevel = gameData.user?.level || 1;
     const playerStats = gameData.user || {};
-    
+
     // Calcular desafío dinámico según nivel
     const dynamicBoss = calculateDynamicBoss(baseBoss, playerLevel, playerStats);
-    
+
     // Verificar si el jugador cumple las condiciones para enfrentar este boss
     const victoryCondition = getVictoryCondition(bossId, playerLevel);
     const canBattle = checkBattleCondition(bossId, victoryCondition);
-    
+
     if (!canBattle) {
       addNotification(`⚠️ Necesitas ${victoryCondition.description} antes de enfrentar a ${baseBoss.title}`, 'warning');
       return;
     }
-    
+
     setActiveChallenge(dynamicBoss);
     setChallengeResult(null);
     setChallengeLog([
@@ -338,7 +385,7 @@ function BossBattles({ addNotification }) {
       `⏱️ Duración: ${dynamicBoss.challenge.duration} minutos`,
       `🎪 Objetivo: ${dynamicBoss.challenge.description}`
     ]);
-    
+
     // Si es un desafío Pomodoro, iniciar el Pomodoro
     if (dynamicBoss.challenge.type === 'pomodoro') {
       startPomodoro();
@@ -353,42 +400,42 @@ function BossBattles({ addNotification }) {
   const completeChallenge = (success) => {
     setIsTimerRunning(false);
     const challenge = activeChallenge;
-    
+
     if (success) {
       // Para desafíos Pomodoro, verificar si se completaron las sesiones necesarias
       if (challenge?.challenge?.type === 'pomodoro') {
         const requiredSessions = Math.ceil(challenge.challenge.duration / 25); // Calcular sesiones requeridas
-        
+
         if (pomodoroSessionsCompleted < requiredSessions) {
           addNotification(`⏳ Necesitas completar ${requiredSessions} sesiones Pomodoro. Llevas ${pomodoroSessionsCompleted}`, 'warning');
           setIsTimerRunning(true); // Continuar el Pomodoro
           return;
         }
       }
-      
+
       // Desafío completado exitosamente
       setChallengeResult('victory');
       setChallengeLog(prev => [...prev, `🎉 ¡Desafío completado! Has derrotado a ${challenge.title}!`]);
-      
+
       // Otorgar recompensas
       const updatedUser = {
         ...gameData.user,
         xp: gameData.user.xp + challenge.rewards.xp,
         coins: gameData.user.coins + challenge.rewards.coins
       };
-      
+
       // Guardar logro
       const achievements = gameData.achievements || [];
       if (!achievements.includes(challenge.rewards.achievement)) {
         achievements.push(challenge.rewards.achievement);
       }
-      
+
       updateGameData({
         user: updatedUser,
         achievements: achievements,
         defeatedBosses: [...(gameData.defeatedBosses || []), challenge.id]
       });
-      
+
       addNotification(`🏆 ¡Victoria! Has completado el desafío y ganado +${challenge.rewards.xp} XP y +${challenge.rewards.coins} coins`, 'success');
     } else {
       // Desafío fallido
@@ -396,7 +443,7 @@ function BossBattles({ addNotification }) {
       setChallengeLog(prev => [...prev, `💀 No has completado el desafío contra ${challenge.title}...`]);
       addNotification('💀 Desafío no completado. Intenta de nuevo cuando estés más preparado', 'error');
     }
-    
+
     // Resetear Pomodoro si estaba activo
     if (showPomodoro) {
       setShowPomodoro(false);
@@ -445,10 +492,10 @@ function BossBattles({ addNotification }) {
   // Manejar cambio de fase Pomodoro
   const handlePomodoroPhaseChange = () => {
     const currentPhase = pomodoroPhase;
-    
+
     if (currentPhase === 'work') {
       setPomodoroSessionsCompleted(prev => prev + 1);
-      
+
       if (pomodoroSession % 4 === 0) {
         // Long break después de 4 sesiones
         setPomodoroPhase('long_break');
@@ -467,52 +514,52 @@ function BossBattles({ addNotification }) {
       setElapsedTime(0);
       addNotification('💪 ¡Descanso terminado! De vuelta al trabajo', 'info');
     }
-    
+
     setChallengeStartTime(Date.now());
   };
 
   // Verificar si el jugador puede enfrentar al boss
-const checkBattleCondition = (bossId, victoryCondition) => {
-  // Si no hay condición de victoria, permitir por defecto
-  if (!victoryCondition || !victoryCondition.type) {
-    return true;
-  }
-  
-  const habits = gameData.habits || [];
-  const tasks = gameData.tasks || [];
-  const playerLevel = gameData.user?.level || 1;
-  
-  switch (victoryCondition.type) {
-    case 'complete_tasks':
-      const completedTasks = tasks.filter(t => t.completed).length;
-      return completedTasks >= victoryCondition.requirement;
-      
-    case 'focus_habits':
-      const focusHabits = habits.filter(h => 
-        h.name.toLowerCase().includes('meditar') || 
-        h.name.toLowerCase().includes('focus') ||
-        h.name.toLowerCase().includes('concentración')
-      );
-      const totalFocusCompletions = focusHabits.reduce((sum, h) => sum + (h.totalCompletions || 0), 0);
-      return totalFocusCompletions >= victoryCondition.requirement;
-      
-    case 'exercise_streak':
-      const exerciseHabits = habits.filter(h => 
-        h.name.toLowerCase().includes('ejercicio') || 
-        h.name.toLowerCase().includes('gimnasio') ||
-        h.name.toLowerCase().includes('correr')
-      );
-      return exerciseHabits.some(h => (h.streak || 0) >= victoryCondition.requirement);
-      
-    case 'none':
-    default:
-      return true; // Por defecto permitir
-  }
-};
+  const checkBattleCondition = (bossId, victoryCondition) => {
+    // Si no hay condición de victoria, permitir por defecto
+    if (!victoryCondition || !victoryCondition.type) {
+      return true;
+    }
+
+    const habits = gameData.habits || [];
+    const tasks = gameData.tasks || [];
+    const playerLevel = gameData.user?.level || 1;
+
+    switch (victoryCondition.type) {
+      case 'complete_tasks':
+        const completedTasks = tasks.filter(t => t.completed).length;
+        return completedTasks >= victoryCondition.requirement;
+
+      case 'focus_habits':
+        const focusHabits = habits.filter(h =>
+          h.name.toLowerCase().includes('meditar') ||
+          h.name.toLowerCase().includes('focus') ||
+          h.name.toLowerCase().includes('concentración')
+        );
+        const totalFocusCompletions = focusHabits.reduce((sum, h) => sum + (h.totalCompletions || 0), 0);
+        return totalFocusCompletions >= victoryCondition.requirement;
+
+      case 'exercise_streak':
+        const exerciseHabits = habits.filter(h =>
+          h.name.toLowerCase().includes('ejercicio') ||
+          h.name.toLowerCase().includes('gimnasio') ||
+          h.name.toLowerCase().includes('correr')
+        );
+        return exerciseHabits.some(h => (h.streak || 0) >= victoryCondition.requirement);
+
+      case 'none':
+      default:
+        return true; // Por defecto permitir
+    }
+  };
 
 
 
-  
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -541,14 +588,13 @@ const checkBattleCondition = (bossId, victoryCondition) => {
                 {showPomodoro && activeChallenge?.challenge?.type === 'pomodoro' ? (
                   <div>
                     <div className="mb-4">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        pomodoroPhase === 'work' ? 'bg-red-100 text-red-700' :
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${pomodoroPhase === 'work' ? 'bg-red-100 text-red-700' :
                         pomodoroPhase === 'short_break' ? 'bg-green-100 text-green-700' :
-                        'bg-blue-100 text-blue-700'
-                      }`}>
+                          'bg-blue-100 text-blue-700'
+                        }`}>
                         {pomodoroPhase === 'work' ? '🍅 Tiempo de Trabajo' :
-                         pomodoroPhase === 'short_break' ? '☕ Descanso Corto' :
-                         '🌟 Descanso Largo'}
+                          pomodoroPhase === 'short_break' ? '☕ Descanso Corto' :
+                            '🌟 Descanso Largo'}
                       </span>
                     </div>
                     <div className="text-6xl font-bold mb-2">
@@ -558,12 +604,11 @@ const checkBattleCondition = (bossId, victoryCondition) => {
                       Sesión {pomodoroSession} • {pomodoroSessionsCompleted} completadas
                     </p>
                     <div className="w-full bg-gray-200 rounded-full h-3 mb-4">
-                      <div 
-                        className={`h-3 rounded-full transition-all duration-1000 ${
-                          pomodoroPhase === 'work' ? 'bg-red-500' :
+                      <div
+                        className={`h-3 rounded-full transition-all duration-1000 ${pomodoroPhase === 'work' ? 'bg-red-500' :
                           pomodoroPhase === 'short_break' ? 'bg-green-500' :
-                          'bg-blue-500'
-                        }`}
+                            'bg-blue-500'
+                          }`}
                         style={{ width: `${(elapsedTime / pomodoroConfig[pomodoroPhase]) * 100}%` }}
                       />
                     </div>
@@ -592,7 +637,7 @@ const checkBattleCondition = (bossId, victoryCondition) => {
                       Tiempo transcurrido / {activeChallenge.challenge.duration}:00
                     </p>
                     <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div 
+                      <div
                         className="bg-purple-600 h-3 rounded-full transition-all duration-1000"
                         style={{ width: `${Math.min(100, (elapsedTime / (activeChallenge.challenge.duration * 60)) * 100)}%` }}
                       />
@@ -610,22 +655,21 @@ const checkBattleCondition = (bossId, victoryCondition) => {
                   <span className="text-gray-600">Tipo:</span>
                   <span className="font-medium">
                     {activeChallenge.challenge.type === 'pomodoro' ? '🍅 Sesión Pomodoro' :
-                     activeChallenge.challenge.type === 'deep_focus' ? '🎯 Trabajo Profundo' :
-                     activeChallenge.challenge.type === 'exercise' ? '🏃 Ejercicio Físico' :
-                     activeChallenge.challenge.type === 'imperfect_action' ? '⚡ Acción Imperfecta' :
-                     activeChallenge.challenge.type === 'new_challenge' ? '🎪 Nuevo Desafío' :
-                     activeChallenge.challenge.type === 'digital_detox' ? '🔥 Detox Digital' :
-                     activeChallenge.challenge.type.replace('_', ' ')}
+                      activeChallenge.challenge.type === 'deep_focus' ? '🎯 Trabajo Profundo' :
+                        activeChallenge.challenge.type === 'exercise' ? '🏃 Ejercicio Físico' :
+                          activeChallenge.challenge.type === 'imperfect_action' ? '⚡ Acción Imperfecta' :
+                            activeChallenge.challenge.type === 'new_challenge' ? '🎪 Nuevo Desafío' :
+                              activeChallenge.challenge.type === 'digital_detox' ? '🔥 Detox Digital' :
+                                activeChallenge.challenge.type.replace('_', ' ')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Dificultad:</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    activeChallenge.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${activeChallenge.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
                     activeChallenge.difficulty === 'hard' ? 'bg-orange-100 text-orange-700' :
-                    activeChallenge.difficulty === 'extreme' ? 'bg-red-100 text-red-700' :
-                    'bg-purple-100 text-purple-700'
-                  }`}>
+                      activeChallenge.difficulty === 'extreme' ? 'bg-red-100 text-red-700' :
+                        'bg-purple-100 text-purple-700'
+                    }`}>
                     {activeChallenge.difficulty}
                   </span>
                 </div>
@@ -735,186 +779,280 @@ const checkBattleCondition = (bossId, victoryCondition) => {
         </div>
       )}
 
-      {/* Available Bosses */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Object.values(bossBattles).map(boss => {
-          const isUnlocked = unlockedBosses.includes(boss.id);
+
+      {/* ─── FEATURED PANEL: visible when a boss is selected ─── */}
+      <div className={`transition-all duration-500 ${selectedBossId ? 'opacity-100' : 'opacity-0 pointer-events-none h-0 overflow-hidden'}`}>
+        {selectedBossId && (() => {
+          const boss = bossBattles[selectedBossId];
           const isDefeated = gameData.defeatedBosses?.includes(boss.id);
           const playerLevel = gameData.user?.level || 1;
           const playerStats = gameData.user || {};
           const dynamicBoss = calculateDynamicBoss(boss, playerLevel, playerStats);
           const victoryCondition = getVictoryCondition(boss.id, playerLevel);
-          const canBattle = isUnlocked && checkBattleCondition(boss.id, victoryCondition);
-          
+          const canBattle = unlockedBosses.includes(boss.id) && checkBattleCondition(boss.id, victoryCondition);
+
           return (
-            <div 
-              key={boss.id}
-              className={`relative rounded-xl p-6 border-2 transition-all ${
-                isDefeated ? 'bg-gray-50 border-gray-200 opacity-75' :
-                isUnlocked ? 'bg-white border-red-200 hover:border-red-400 hover:shadow-lg' :
-                'bg-gray-100 border-gray-200 opacity-50'
-              }`}
-            >
-              {/* Status Badge */}
-              <div className="absolute top-4 right-4">
-                {!isUnlocked && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-gray-200 text-gray-600 rounded-full text-xs">
-                    <Lock className="w-3 h-3" />
-                    Bloqueado
-                  </div>
-                )}
-                {isDefeated && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
-                    <CheckCircle className="w-3 h-3" />
-                    Derrotado
-                  </div>
-                )}
-                {isUnlocked && !isDefeated && (
-                  <div className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs">
-                    <AlertTriangle className="w-3 h-3" />
-                    Disponible
-                  </div>
-                )}
-              </div>
-
-              <div className="text-center">
-                <div className="text-4xl mb-3">{boss.icon}</div>
-                <h3 className="text-lg font-bold text-gray-800 mb-1">{boss.title}</h3>
-                <p className="text-sm text-gray-600 mb-3">{boss.description}</p>
-                
-                {/* Challenge Stats */}
-                <div className="flex items-center justify-center gap-4 mb-3 text-sm">
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-4 h-4 text-purple-500" />
-                    <span>{dynamicBoss.challenge.duration}min</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Award className="w-4 h-4 text-yellow-500" />
-                    <span>{dynamicBoss.rewards.xp} XP</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Star className="w-4 h-4 text-blue-500" />
-                    <span>{dynamicBoss.rewards.coins} coins</span>
-                  </div>
+            <div key={selectedBossId} className="flex flex-col lg:flex-row gap-4 bg-gradient-to-br from-purple-50 via-indigo-50 to-purple-50 border-2 border-purple-300 rounded-2xl p-5 shadow-lg boss-featured-in">
+              {/* Selected Boss Card */}
+              <div
+                onClick={() => {
+                  if (activeChallenge) {
+                    addNotification('Ya tienes una batalla contra un boss en progreso', 'warning');
+                    return;
+                  }
+                  setSelectedBossId(null);
+                }}
+                className={`lg:w-64 flex-shrink-0 bg-white rounded-xl p-5 border-2 border-purple-400 shadow-md ${activeChallenge ? 'cursor-not-allowed' : 'cursor-pointer hover:border-purple-500'} transition-all relative`}
+                title="Haz clic para deseleccionar"
+              >
+                <div className="absolute top-3 right-3 text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full">
+                  ✓ Seleccionado
                 </div>
+                <div className="text-center">
+                  <div className="text-5xl mb-3">{boss.icon}</div>
+                  <h3 className="text-lg font-bold text-gray-800 mb-1">{boss.title}</h3>
+                  <p className="text-sm text-gray-600 mb-3">{boss.description}</p>
 
-                {/* Difficulty Badge */}
-                {isUnlocked && (
-                  <div className="mb-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      dynamicBoss.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                      dynamicBoss.difficulty === 'hard' ? 'bg-orange-100 text-orange-700' :
+                  <div className="flex items-center justify-center gap-3 mb-3 text-xs">
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-purple-500" />
+                      <span>{dynamicBoss.challenge.duration}min</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Award className="w-3 h-3 text-yellow-500" />
+                      <span>{dynamicBoss.rewards.xp} XP</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Star className="w-3 h-3 text-blue-500" />
+                      <span>{dynamicBoss.rewards.coins} coins</span>
+                    </div>
+                  </div>
+
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${dynamicBoss.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                    dynamicBoss.difficulty === 'hard' ? 'bg-orange-100 text-orange-700' :
                       dynamicBoss.difficulty === 'extreme' ? 'bg-red-100 text-red-700' :
-                      'bg-purple-100 text-purple-700'
+                        'bg-purple-100 text-purple-700'
                     }`}>
-                      {dynamicBoss.difficulty === 'medium' ? '⭐⭐ Medio' : 
-                       dynamicBoss.difficulty === 'hard' ? '⭐⭐⭐ Difícil' : 
-                       dynamicBoss.difficulty === 'extreme' ? '⭐⭐⭐⭐ Extremo' :
-                       '⭐⭐⭐⭐⭐ Legendario'}
-                    </span>
-                  </div>
-                )}
+                    {dynamicBoss.difficulty === 'medium' ? '⭐⭐ Medio' :
+                      dynamicBoss.difficulty === 'hard' ? '⭐⭐⭐ Difícil' :
+                        dynamicBoss.difficulty === 'extreme' ? '⭐⭐⭐⭐ Extremo' :
+                          '⭐⭐⭐⭐⭐ Legendario'}
+                  </span>
 
-                {/* Challenge Description */}
-                {isUnlocked && (
-                  <div className="mb-3">
-                    <p className="text-xs text-gray-500 mb-1">Desafío:</p>
-                    <p className="text-xs font-medium text-gray-700">{dynamicBoss.challenge.description}</p>
-                  </div>
-                )}
-
-                {/* Challenge Type */}
-                {isUnlocked && (
-                  <div className="mb-3">
-                    <p className="text-xs text-gray-500 mb-1">Tipo:</p>
-                    <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
-                      {dynamicBoss.challenge.type === 'pomodoro' ? '🍅 Sesión Pomodoro' :
-                       dynamicBoss.challenge.type === 'deep_focus' ? '🎯 Trabajo Profundo' :
-                       dynamicBoss.challenge.type === 'exercise' ? '🏃 Ejercicio Físico' :
-                       dynamicBoss.challenge.type === 'imperfect_action' ? '⚡ Acción Imperfecta' :
-                       dynamicBoss.challenge.type === 'new_challenge' ? '🎪 Nuevo Desafío' :
-                       dynamicBoss.challenge.type === 'digital_detox' ? '🔥 Detox Digital' :
-                       dynamicBoss.challenge.type.replace('_', ' ')}
-                    </span>
-                  </div>
-                )}
-
-                {/* Action Button */}
-                {isUnlocked && !isDefeated && (
-                  <button
-                    onClick={() => {
-                      if (canBattle) {
-                        startChallenge(boss.id);
-                      } else {
-                        // Iniciar desafío directamente sin cumplir requisitos previos
-                        const baseBoss = bossBattles[boss.id];
-                        const playerLevel = gameData.user?.level || 1;
-                        const playerStats = gameData.user || {};
-                        const dynamicBoss = calculateDynamicBoss(baseBoss, playerLevel, playerStats);
-                        
-                        setActiveChallenge(dynamicBoss);
-                        setChallengeResult(null);
-                        setChallengeLog([
-                          `🎯 Desafío contra ${baseBoss.title} iniciado!`,
-                          `📊 Dificultad: ${dynamicBoss.difficulty} (Nivel ${playerLevel})`,
-                          `⏱️ Duración: ${dynamicBoss.challenge.duration} minutos`,
-                          `🎪 Objetivo: ${dynamicBoss.challenge.description}`
-                        ]);
-                        
-                        // Iniciar pomodoro directamente
-                        if (dynamicBoss.challenge.type === 'pomodoro') {
-                          resetPomodoro();
-                          setShowPomodoro(true);
-                          setIsTimerRunning(true);
-                          setChallengeStartTime(Date.now());
+                  {!isDefeated && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (canBattle) {
+                          startChallenge(boss.id);
                         } else {
-                          setChallengeStartTime(Date.now());
-                          setElapsedTime(0);
-                          setIsTimerRunning(true);
+                          const dBoss = calculateDynamicBoss(boss, playerLevel, playerStats);
+                          setActiveChallenge(dBoss);
+                          setChallengeResult(null);
+                          setChallengeLog([
+                            `🎯 Desafío contra ${boss.title} iniciado!`,
+                            `📊 Dificultad: ${dBoss.difficulty} (Nivel ${playerLevel})`,
+                            `⏱️ Duración: ${dBoss.challenge.duration} minutos`,
+                            `🎪 Objetivo: ${dBoss.challenge.description}`
+                          ]);
+                          if (dBoss.challenge.type === 'pomodoro') {
+                            resetPomodoro();
+                            setShowPomodoro(true);
+                            setIsTimerRunning(true);
+                            setChallengeStartTime(Date.now());
+                          } else {
+                            setChallengeStartTime(Date.now());
+                            setElapsedTime(0);
+                            setIsTimerRunning(true);
+                          }
+                          addNotification(`🚀 Desafío ${boss.title} iniciado!`, 'success');
                         }
-                        
-                        addNotification(`🍅 Desafío ${baseBoss.title} iniciado. ¡Completa el pomodoro!`, 'success');
-                      }
-                    }}
-                    className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
-                      canBattle
+                      }}
+                      className={`w-full mt-3 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${canBattle
                         ? 'bg-purple-600 text-white hover:bg-purple-700'
                         : 'bg-orange-500 text-white hover:bg-orange-600'
-                    }`}
-                  >
-                    {canBattle ? '🎯 Iniciar Desafío' : '📋 Cumple requisito'}
-                  </button>
-                )}
-                
-                {!isUnlocked && (
-                  <div className="text-xs text-gray-500 text-center">
-                    {boss.id === 'distraction' && 'Desbloquea con hábitos de focus'}
-                    {boss.id === 'laziness' && 'Desbloquea con hábitos de ejercicio'}
-                    {boss.id === 'perfectionism' && 'Desbloquea con 5+ tareas'}
-                    {boss.id === 'fear' && 'Desbloquea en nivel 3+'}
+                        }`}
+                    >
+                      {canBattle ? '🎯 Iniciar Desafío' : '📋 Cumple requisito'}
+                    </button>
+                  )}
+                  {isDefeated && (
+                    <div className="mt-3 flex items-center justify-center gap-1 text-green-700 text-xs font-semibold">
+                      <CheckCircle className="w-4 h-4" /> Ya derrotado
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Strategy Tips */}
+              <div className="flex-1 flex flex-col">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 bg-purple-200 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Target className="w-5 h-5 text-purple-700" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-purple-500 uppercase tracking-widest">Estrategia de batalla</p>
+                    <h4 className="text-xl font-bold text-purple-900">
+                      Cómo vencer a <span className="text-purple-600">{boss.title}</span>
+                    </h4>
+                  </div>
+                </div>
+                {bossTips[boss.id] && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
+                    {bossTips[boss.id].map((tip, index) => (
+                      <div key={index} className="flex items-start gap-3 bg-white bg-opacity-80 rounded-xl p-3 border border-purple-100">
+                        <span className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                          {index + 1}
+                        </span>
+                        <span className="text-sm text-purple-800 leading-snug">{tip.replace('• ', '')}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             </div>
           );
-        })}
+        })()}
       </div>
 
-      {/* Tips */}
-      <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
-        <div className="flex items-center gap-2 mb-3">
-          <Target className="w-5 h-5 text-blue-600" />
-          <h3 className="text-lg font-semibold text-blue-900">Consejos para Batallas</h3>
+      {/* ─── REMAINING CHALLENGES GRID ─── */}
+      <div>
+        <p className="text-sm font-medium text-gray-500 mb-3">
+          {selectedBossId ? 'Otros desafíos disponibles:' : 'Selecciona un desafío:'}
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Object.values(bossBattles)
+            .filter(boss => boss.id !== selectedBossId)
+            .map(boss => {
+              const isUnlocked = unlockedBosses.includes(boss.id);
+              const isDefeated = gameData.defeatedBosses?.includes(boss.id);
+              const playerLevel = gameData.user?.level || 1;
+              const playerStats = gameData.user || {};
+              const dynamicBoss = calculateDynamicBoss(boss, playerLevel, playerStats);
+
+              return (
+                <div
+                  key={boss.id}
+                  onClick={() => {
+                    if (activeChallenge) {
+                      addNotification('Ya tienes una batalla contra un boss en progreso', 'warning');
+                      return;
+                    }
+                    if (isUnlocked && animatingBossId === null) {
+                      setAnimatingBossId(boss.id);
+                      setTimeout(() => {
+                        setSelectedBossId(boss.id);
+                        setAnimatingBossId(null);
+                      }, 380);
+                    }
+                  }}
+                  className={`relative rounded-xl overflow-hidden border-2 transition-all duration-300 ${animatingBossId === boss.id
+                    ? 'boss-card-fly'
+                    : isDefeated
+                      ? `bg-gray-50 border-gray-200 opacity-75 grayscale ${activeChallenge ? 'cursor-not-allowed' : 'cursor-pointer hover:opacity-90'}`
+                      : isUnlocked
+                        ? `bg-white border-red-200 hover:border-purple-400 hover:shadow-lg ${activeChallenge ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-purple-50'}`
+                        : 'bg-white border-gray-300 cursor-not-allowed'
+                    }`}
+                >
+                  {/* Dark lock overlay — only for locked bosses */}
+                  {!isUnlocked && (
+                    <div className="absolute inset-0 rounded-xl z-10 flex flex-col items-center justify-center gap-3"
+                      style={{ background: 'rgba(10, 10, 20, 0.72)', backdropFilter: 'blur(1.5px)' }}>
+                      {/* Lock icon */}
+                      <div className="w-12 h-12 rounded-full bg-white bg-opacity-10 border border-white border-opacity-25 flex items-center justify-center">
+                        <Lock className="w-6 h-6 text-white" />
+                      </div>
+                      {/* Unlock condition */}
+                      <div className="text-center px-4">
+                        <p className="text-white text-xs font-bold uppercase tracking-widest mb-1 opacity-60">Bloqueado</p>
+                        <p className="text-white text-sm font-semibold leading-snug">
+                          {boss.id === 'distraction' && '🎯 Completa hábitos de focus'}
+                          {boss.id === 'laziness' && '🏃 Completa hábitos de ejercicio'}
+                          {boss.id === 'perfectionism' && '✅ Completa 5+ tareas'}
+                          {boss.id === 'fear' && '⭐ Alcanza el nivel 3'}
+                          {boss.id === 'burnout' && '🏆 Completa otros desafíos primero'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Card content (always rendered, overlay sits on top when locked) */}
+                  <div className="p-5">
+                    {/* Status Badge */}
+                    <div className="absolute top-3 right-3 z-20">
+                      {isDefeated && (
+                        <div className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">
+                          <CheckCircle className="w-3 h-3" /> Derrotado
+                        </div>
+                      )}
+                      {isUnlocked && !isDefeated && (
+                        <div className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs">
+                          <AlertTriangle className="w-3 h-3" /> Disponible
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">{boss.icon}</div>
+                      <h3 className="text-base font-bold text-gray-800 mb-1">{boss.title}</h3>
+                      <p className="text-xs text-gray-500 mb-3">{boss.description}</p>
+
+                      <div className="flex items-center justify-center gap-3 mb-2 text-xs">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-purple-500" />
+                          <span>{dynamicBoss.challenge.duration}min</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Award className="w-3 h-3 text-yellow-500" />
+                          <span>{dynamicBoss.rewards.xp} XP</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3 h-3 text-blue-500" />
+                          <span>{dynamicBoss.rewards.coins} coins</span>
+                        </div>
+                      </div>
+
+                      {isUnlocked && (
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${dynamicBoss.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                          dynamicBoss.difficulty === 'hard' ? 'bg-orange-100 text-orange-700' :
+                            dynamicBoss.difficulty === 'extreme' ? 'bg-red-100 text-red-700' :
+                              'bg-purple-100 text-purple-700'
+                          }`}>
+                          {dynamicBoss.difficulty === 'medium' ? '⭐⭐ Medio' :
+                            dynamicBoss.difficulty === 'hard' ? '⭐⭐⭐ Difícil' :
+                              dynamicBoss.difficulty === 'extreme' ? '⭐⭐⭐⭐ Extremo' :
+                                '⭐⭐⭐⭐⭐ Legendario'}
+                        </span>
+                      )}
+
+                      {isUnlocked && !isDefeated && (
+                        <p className="text-xs text-purple-500 mt-2 font-medium">
+                          ↑ Pulsa para seleccionar
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
         </div>
-        <ul className="space-y-2 text-sm text-blue-800">
-          <li>• Cada boss tiene debilidades específicas - úsalas a tu favor</li>
-          <li>• Los ataques fuertes hacen más daño pero pueden dejar vulnerable</li>
-          <li>• Completa las condiciones especiales para ventaja adicional</li>
-          <li>• Los bosses derrotados dan recompensas permanentes</li>
-          <li>• Algunos bosses se desbloquean según tu progreso</li>
-        </ul>
       </div>
-    </div>
+
+      {/* General tips hint — shown only when nothing is selected */}
+      {
+        !selectedBossId && (
+          <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+            <div className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-blue-600 flex-shrink-0" />
+              <p className="text-sm text-blue-800">
+                <span className="font-semibold">Consejos para Batallas:</span> Pulsa cualquier desafío desbloqueado para ver la estrategia de batalla específica y el botón de inicio.
+              </p>
+            </div>
+          </div>
+        )
+      }
+    </div >
   );
 }
 

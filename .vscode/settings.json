@@ -1,0 +1,11 @@
+{
+  "css.validate": true,
+  "tailwindCSS.includeLanguages": {
+    "css": "css"
+  },
+  "tailwindCSS.experimental.classRegex": [],
+  "css.customData": [".vscode/css_custom_data.json"],
+  "files.associations": {
+    "*.css": "tailwindcss"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "version": 1.1,
+  "atDirectives": [
+    {
+      "name": "@tailwind",
+      "description": "Tailwind CSS at-rule for injecting base styles, components, and utilities",
+      "references": [
+        {
+          "name": "Tailwind CSS Documentation",
+          "url": "https://tailwindcss.com/docs/functions-and-directives"
+        }
+      ]
+    },
+    {
+      "name": "@apply",
+      "description": "Tailwind CSS at-rule for applying utility classes in CSS",
+      "references": [
+        {
+          "name": "Tailwind CSS Documentation",
+          "url": "https://tailwindcss.com/docs/functions-and-directives"
+        }
+      ]
+    },
+    {
+      "name": "@layer",
+      "description": "Tailwind CSS at-rule for organizing CSS into layers",
+      "references": [
+        {
+          "name": "Tailwind CSS Documentation",
+          "url": "https://tailwindcss.com/docs/functions-and-directives"
+        }
+      ]
+    }
+  ],
+  "properties": [],
+  "pseudoClasses": [],
+  "pseudoElements": []
+}

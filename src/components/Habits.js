@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { CheckSquare, Plus, Search, Calendar, AlertCircle, CheckCircle, Clock, Zap, Edit2, Trash2, X, Sun, Moon, Heart, Target, Flame, TrendingUp, Award, Filter } from 'lucide-react';
 
@@ -211,6 +211,11 @@ function Habits({ addNotification }) {
   const { gameData, updateGameData, updateLifeAreaProgress, updateObjectiveProgress, themes,
     addBadHabit, relapseBadHabit, deleteBadHabit, updateBadHabitDays } = useData();
   const [habits, setHabits] = useState(gameData.habits || []);
+
+  // Mantener sincronizado el estado local de hábitos con el contexto global
+  useEffect(() => {
+    setHabits(gameData.habits || []);
+  }, [gameData.habits]);
   
   const currentTheme = gameData.user?.theme || 'light';
   const themeConfig = themes[currentTheme] || themes.light;
@@ -650,12 +655,11 @@ function Habits({ addNotification }) {
   };
 
   return (
-    <div className={`space-y-8 ${themeConfig.text}`}>
+    <div className={`space-y-4 ${themeConfig.text}`}>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className={`text-3xl font-bold mb-2 ${themeConfig.text}`}>Hábitos</h1>
-          <p className={themeConfig.textMuted}>Construye rutinas poderosas y transforma tu vida</p>
+          <h1 className={`text-3xl font-bold mb-1 ${themeConfig.text}`}>Hábitos</h1>
         </div>
         <button 
           onClick={() => mainTab === 'good' ? setShowModal(true) : setShowBadHabitModal(true)}
@@ -883,6 +887,115 @@ function Habits({ addNotification }) {
       {/* GOOD HABITS TAB - everything below only shows when mainTab === 'good' */}
       {mainTab === 'good' && (<>
 
+      {/* Filtros Principales (Hoy vs Todos) y Filtros por Categoría */}
+      <div className={`${themeConfig.card} p-4 rounded-xl border ${themeConfig.border} space-y-4`}>
+        {/* Main Filters */}
+        <div className="flex bg-gray-100/50 p-1 rounded-lg w-full md:w-fit">
+          <button
+            onClick={() => setMainFilter('today')}
+            className={`flex-1 md:w-32 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+              mainFilter === 'today'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Hoy
+          </button>
+          <button
+            onClick={() => setMainFilter('all')}
+            className={`flex-1 md:w-32 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+              mainFilter === 'all'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Todos
+          </button>
+        </div>
+
+        {/* Category Filters */}
+        <div className="flex items-center gap-2">
+          <Filter className={`w-5 h-5 ${themeConfig.textMuted}`} />
+          <span className={`font-medium ${themeConfig.text}`}>Categoría:</span>
+        </div>
+        <div className="flex overflow-x-auto hide-scrollbar pb-1 gap-2">
+          <button
+            onClick={() => setFilter('all')}
+            className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-all ${
+              filter === 'all' 
+                ? 'bg-blue-600 text-white' 
+                : `${themeConfig.textMuted} hover:${themeConfig.text} hover:${themeConfig.bg}`
+            }`}
+          >
+            Todas
+          </button>
+          {lifeAreas.map(area => (
+            <button
+              key={area.id}
+              onClick={() => setFilter(area.id)}
+              className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                filter === area.id 
+                  ? 'bg-blue-600 text-white' 
+                  : `${themeConfig.textMuted} hover:${themeConfig.text} hover:${themeConfig.bg}`
+              }`}
+            >
+              <span>{area.icon}</span>
+              {area.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Lista principal: siempre arriba al entrar */}
+      <div className="mb-6">
+        <ul className="space-y-3">
+          {filteredHabits.map(habit => {
+            const category = lifeAreas.find(area => area.id === habit.category) || { icon: '❔', name: 'Sin categoría' };
+            const completionRate = calculateCompletionRate(habit);
+            return (
+            <li key={habit.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-100">
+              <div className="flex items-start gap-3 min-w-0">
+                <button onClick={() => handleToggleHabit(habit.id)}
+                  className={`w-9 h-9 rounded-full flex items-center justify-center mt-1 ${habit.completedToday ? 'bg-green-500 text-white' : 'bg-white border border-gray-200'}`}>
+                  {habit.completedToday ? <CheckCircle className="w-4 h-4 text-white" /> : <CheckSquare className="w-4 h-4 text-gray-400" />}
+                </button>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl mr-1 flex-shrink-0">{habit.icon}</span>
+                    <div className={`font-medium truncate ${habit.completedToday ? 'line-through opacity-60' : ''}`}>{habit.name}</div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 truncate">
+                    <span className="flex items-center gap-1">
+                      <span className="text-sm">{category.icon}</span>
+                      <span className="whitespace-nowrap">{category.name}</span>
+                    </span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      {getTimeIcon(habit.timeOfDay)}
+                      <span className="capitalize">{habit.timeOfDay}</span>
+                    </span>
+                    <span>•</span>
+                    <span className="font-medium">{completionRate}%</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col items-end text-right">
+                  <div className="text-xs text-blue-600 font-semibold">+{habit.xp}</div>
+                  <div className="text-xs text-yellow-600 font-semibold">🪙{habit.coins}</div>
+                </div>
+                <div className="hidden sm:flex flex-col items-end text-right text-[11px] text-gray-600">
+                  <span>🔥 {habit.streak}d</span>
+                  <span>✔ {habit.totalCompletions}</span>
+                </div>
+                <button onClick={() => handleEditHabit(habit)} className="p-1 text-gray-400 hover:text-blue-600 hidden md:inline-flex"><Edit2 className="w-4 h-4"/></button>
+                <button onClick={() => handleDeleteHabit(habit.id)} className="p-1 text-gray-400 hover:text-red-600 hidden md:inline-flex"><Trash2 className="w-4 h-4"/></button>
+              </div>
+            </li>
+          )})}
+        </ul>
+      </div>
+
       {/* Estadísticas */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className={`${themeConfig.card} p-4 rounded-xl border ${themeConfig.border}`}>
@@ -946,192 +1059,7 @@ function Habits({ addNotification }) {
         </div>
       </div>
 
-      {/* Filtros Principales (Hoy vs Todos) y Filtros por Categoría */}
-      <div className={`${themeConfig.card} p-4 rounded-xl border ${themeConfig.border} space-y-4`}>
-        {/* Main Filters */}
-        <div className="flex bg-gray-100/50 p-1 rounded-lg w-full md:w-fit">
-          <button
-            onClick={() => setMainFilter('today')}
-            className={`flex-1 md:w-32 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-              mainFilter === 'today'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Hoy
-          </button>
-          <button
-            onClick={() => setMainFilter('all')}
-            className={`flex-1 md:w-32 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-              mainFilter === 'all'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Todos
-          </button>
-        </div>
 
-        {/* Category Filters */}
-        <div className="flex items-center gap-2">
-          <Filter className={`w-5 h-5 ${themeConfig.textMuted}`} />
-          <span className={`font-medium ${themeConfig.text}`}>Categoría:</span>
-        </div>
-        <div className="flex overflow-x-auto hide-scrollbar pb-1 gap-2">
-          <button
-            onClick={() => setFilter('all')}
-            className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-all ${
-              filter === 'all' 
-                ? 'bg-blue-600 text-white' 
-                : `${themeConfig.textMuted} hover:${themeConfig.text} hover:${themeConfig.bg}`
-            }`}
-          >
-            Todas
-          </button>
-          {lifeAreas.map(area => (
-            <button
-              key={area.id}
-              onClick={() => setFilter(area.id)}
-              className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
-                filter === area.id 
-                  ? 'bg-blue-600 text-white' 
-                  : `${themeConfig.textMuted} hover:${themeConfig.text} hover:${themeConfig.bg}`
-              }`}
-            >
-              <span>{area.icon}</span>
-              {area.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Lista de Hábitos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        {filteredHabits.map(habit => {
-          const category = lifeAreas.find(area => area.id === habit.category);
-          const completionRate = calculateCompletionRate(habit);
-          return (
-            <div key={habit.id} className={`card-glow p-4 ${getDifficultyColor(habit.difficulty)}`}>
-              <div className="flex items-start justify-between mb-3 gap-2">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <button
-                    onClick={() => handleToggleHabit(habit.id)}
-                    className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 shadow-sm ${
-                      habit.completedToday 
-                        ? 'bg-green-500 border-green-500' 
-                        : 'border-gray-300 bg-white hover:border-gray-400'
-                    }`}
-                  >
-                    {habit.completedToday && <CheckCircle className="w-5 h-5 text-white" />}
-                  </button>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xl md:text-2xl flex-shrink-0 bg-gray-50 rounded-xl p-1 shadow-sm">{habit.icon}</span>
-                      <h4 className={`font-semibold text-lg text-gray-900 ${habit.completedToday ? 'line-through opacity-60' : ''} truncate`}>
-                        {habit.name}
-                      </h4>
-                    </div>
-                    {habit.description && (
-                      <p className={`text-sm text-gray-500 leading-relaxed line-clamp-2 ${habit.completedToday ? 'line-through opacity-60' : ''}`}>
-                        {habit.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-1 flex-shrink-0 mt-1">
-                  <button
-                    onClick={() => handleEditHabit(habit)}
-                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Editar hábito"
-                  >
-                    <Edit2 className="w-4 h-4 md:w-5 md:h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteHabit(habit.id)}
-                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Eliminar hábito"
-                  >
-                    <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
-                  </button>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t border-gray-100/50">
-                <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-md text-gray-600 text-xs">
-                  <span>{category.icon}</span>
-                  <span className="font-medium whitespace-nowrap">{category.name}</span>
-                </div>
-                
-                <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-md text-gray-600 text-xs">
-                  {getTimeIcon(habit.timeOfDay)}
-                  <span className="font-medium capitalize whitespace-nowrap">{habit.timeOfDay}</span>
-                </div>
-                
-                <div className="bg-blue-50/80 px-2 py-1 rounded-md text-blue-700 text-xs font-semibold whitespace-nowrap flex items-center gap-1">
-                  <Zap className="w-3.5 h-3.5" /> +{habit.xp}
-                </div>
-                <div className="bg-yellow-50/80 px-2 py-1 rounded-md text-yellow-700 text-xs font-semibold whitespace-nowrap flex items-center gap-1">
-                  🪙 +{habit.coins}
-                </div>
-              </div>
-              
-              {/* Objetivos Conectados */}
-              {habit.connectedObjectives && habit.connectedObjectives.length > 0 && (
-                <div className="mt-4 p-2.5 bg-blue-50/50 rounded-lg border border-blue-100">
-                  <div className="text-[10px] uppercase tracking-wider text-blue-600 font-bold mb-1.5 flex items-center gap-1">
-                     <Target className="w-3 h-3"/> Conectado con:
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {habit.connectedObjectives.map(objectiveId => {
-                      const area = gameData.lifeAreas.find(a => a.id === habit.category);
-                      let objective = area?.objectives?.find(o => o.id === objectiveId);
-                      
-                      // Fallback para objetivos predefinidos si no hay guardados costumizados
-                      if (!objective && areaObjectives[habit.category]) {
-                        objective = areaObjectives[habit.category].find(o => o.id === objectiveId);
-                      }
-                      
-                      return objective ? (
-                        <span key={objectiveId} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                          {objective.title}
-                        </span>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-              )}
-              
-              {/* Barra de progreso */}
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-900">Tasa de completación</span>
-                  <span className="text-sm font-semibold text-gray-700">{completionRate}%</span>
-                </div>
-                <div className="w-full bg-gray-100 rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${completionRate}%` }}
-                  />
-                </div>
-              </div>
-              
-              {/* Estadísticas */}
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-orange-500" />
-                  <span className="font-medium text-gray-900">Racha: {habit.streak} días</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span className="font-medium text-gray-900">Total: {habit.totalCompletions}</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
 
       {/* Floating Action Button for Mobile */}
       <button 

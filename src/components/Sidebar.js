@@ -113,6 +113,18 @@ function Sidebar({ activeSection, setActiveSection, gameData, isOpen, setIsOpen 
         </div>
       </div>
 
+      {/* Small Habits Summary */}
+      <div className={`mb-4 p-3 rounded-xl border ${themeConfig.border} bg-white/50`}> 
+        <div className="flex items-center justify-between mb-2">
+          <span className={`${themeConfig.textMuted} text-xs font-semibold`}>Hábitos</span>
+          <span className="text-xs font-bold text-gray-700">{(ctxData.habits || []).length}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Completados hoy</span>
+          <span className="text-sm font-semibold text-green-600">{(ctxData.habits || []).filter(h => h.completedToday).length}</span>
+        </div>
+      </div>
+
 
       {/* Navegación Principal */}
       <nav className="flex-1 overflow-y-auto pr-2 -mr-2 custom-scrollbar">

@@ -3,7 +3,7 @@ import { useData } from '../context/DataContext';
 import {
   ShoppingBag, Package, Gift, Plus, Trash2, Edit2, CheckCircle,
   Sparkles, Zap, Shield, FlaskConical, Heart, Crown, Star,
-  ChevronRight, AlertTriangle, X
+  ChevronRight, AlertTriangle, X, Coins
 } from 'lucide-react';
 
 const iconOptions = [
@@ -302,9 +302,9 @@ function Rewards({ addNotification, activeTabHint }) {
   const isDead = gameData.user?.isDead || false;
 
   useEffect(() => {
-    if (activeTabHint === 'rewards-user') {
+    if (activeTabHint === 'my-rewards') {
       setActiveTab('my-rewards');
-    } else if (activeTabHint === 'rewards-inventory') {
+    } else if (activeTabHint === 'inventory') {
       setActiveTab('inventory');
     }
   }, [activeTabHint]);
@@ -314,6 +314,10 @@ function Rewards({ addNotification, activeTabHint }) {
       updateGameData({ rewards: exampleRewards });
     }
   }, [gameData.rewards.length, updateGameData]);
+
+  const now = new Date();
+  const isXpBoostActive = gameData.user?.xpBoostUntil && new Date(gameData.user.xpBoostUntil) > now;
+  const isShieldActive = gameData.user?.shieldUntil && new Date(gameData.user.shieldUntil) > now;
 
   // -- Free Coffee -------------------------------------------------------------
   const lastCoffeeTime = gameData.user?.lastCoffeeClaimedAt;
@@ -419,6 +423,50 @@ function Rewards({ addNotification, activeTabHint }) {
     : rewards.filter(r => r.claimed);
 
   const inventory = gameData.inventory || [];
+  const renderInventoryItems = () => {
+    const inventory = gameData.inventory || [];
+    if (inventory.length === 0) {
+      return (
+        <div className="col-span-full py-12 text-center text-gray-400">
+          <Package size={48} className="mx-auto mb-4 opacity-20" />
+          <p>Tu inventario está vacío</p>
+        </div>
+      );
+    }
+
+    return inventory.map((item) => {
+      const isActive = (item.effect === 'xp_boost' && isXpBoostActive) || (item.effect === 'shield' && isShieldActive);
+
+      return (
+        <div key={item.id} className={`p-4 rounded-2xl border ${isActive ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100'} shadow-sm`}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-2xl">
+              {item.icon}
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-800">{item.name}</h4>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider">
+                {isActive ? 'En uso' : 'Consumible'}
+              </p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mb-4">{item.description}</p>
+          <button
+            onClick={() => activatePotion(item.id)}
+            disabled={isActive}
+            className={`w-full py-2 rounded-xl text-sm font-bold transition-all ${
+              isActive
+                ? 'bg-blue-100 text-blue-500 cursor-not-allowed'
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-100'
+            }`}
+          >
+            {isActive ? 'Efecto Activo' : 'Usar Ahora'}
+          </button>
+        </div>
+      );
+    });
+  };
+
   const tabs = [
     { id: 'shop', label: 'Tienda RPG', icon: ShoppingBag },
     { id: 'rewards', label: 'Mis Recompensas', icon: Gift },
@@ -554,14 +602,42 @@ function Rewards({ addNotification, activeTabHint }) {
             Items del sistema para mantener a tu personaje con vida y potenciar tu progreso.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-            {shopData.map(item => (
-              <ShopItem
-                key={item.shopId}
-                item={item}
-                canAfford={coins >= item.cost}
-                onBuy={handleBuyItem}
-              />
-            ))}
+            {shopData.map(item => {
+        const isAffordable = coins >= item.cost;
+        const isActive = (item.effect === 'xp_boost' && isXpBoostActive) || (item.effect === 'shield' && isShieldActive);
+
+        return (
+          <div key={item.shopId} className={`p-4 rounded-2xl border ${isActive ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-100'} shadow-sm relative overflow-hidden`}>
+            {isActive && (
+              <div className="absolute top-2 right-2 px-2 py-0.5 bg-blue-500 text-white text-[10px] font-bold rounded-full">
+                ACTIVO
+              </div>
+            )}
+            <div className="text-3xl mb-3">{item.icon}</div>
+            <h4 className="font-bold text-gray-800 mb-1">{item.name}</h4>
+            <p className="text-xs text-gray-500 mb-4 line-clamp-2">{item.description}</p>
+            <div className="flex items-center justify-between mt-auto">
+              <div className="flex items-center gap-1 text-amber-600 font-bold">
+                <Coins size={14} />
+                <span>{item.cost}</span>
+              </div>
+              <button
+                onClick={() => buyItem(item.shopId)}
+                disabled={!isAffordable || isActive}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  isActive 
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : isAffordable 
+                      ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-sm' 
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {isActive ? 'Activo' : 'Comprar'}
+              </button>
+            </div>
+          </div>
+        );
+            })}
           </div>
         </div>
       )}
@@ -618,20 +694,8 @@ function Rewards({ addNotification, activeTabHint }) {
 
       {/* ── INVENTORY TAB ───────────────────────────────────────────────────── */}
       {activeTab === 'inventory' && (
-        <div>
-          {inventory.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9ca3af' }}>
-              <Package style={{ width: 40, height: 40, margin: '0 auto 12px', opacity: 0.3 }} />
-              <p style={{ margin: 0, fontWeight: 600 }}>Tu inventario está vacío</p>
-              <p style={{ margin: '6px 0 0', fontSize: 13 }}>Compra items en la Tienda RPG para verlos aquí</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {inventory.map(item => (
-                <InventoryItem key={item.id} item={item} onUse={activatePotion} />
-              ))}
-            </div>
-          )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {renderInventoryItems()}
         </div>
       )}
 

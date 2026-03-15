@@ -854,7 +854,21 @@ function Habits({ addNotification }) {
       {/* Lista principal: siempre arriba al entrar */}
       <div className="mb-6">
         <ul className="space-y-3">
-          {filteredHabits.map(habit => {
+          {filteredHabits.length === 0 ? (
+            <div className="py-12 text-center text-gray-400 bg-white rounded-xl border border-dashed border-gray-200">
+              <Plus size={48} className="mx-auto mb-4 opacity-20" />
+              <p className="font-medium text-gray-500">
+                {mainTab === 'good' 
+                  ? '¡No has registrado ningún hábito todavía!' 
+                  : 'No has registrado ningún mal hábito todavía.'}
+              </p>
+              <p className="text-sm">
+                {mainTab === 'good'
+                  ? '¡Registra uno pulsando en el botón Nuevo Hábito!'
+                  : 'Registra uno pulsando en el botón de mal hábito arriba.'}
+              </p>
+            </div>
+          ) : filteredHabits.map(habit => {
             const category = lifeAreas.find(area => area.id === habit.category) || { icon: '❔', name: 'Sin categoría' };
             const completionRate = calculateCompletionRate(habit);
             return (

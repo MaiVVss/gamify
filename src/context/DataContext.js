@@ -40,7 +40,9 @@ const initialGameData = {
     },
     theme: 'light',
     accentColor: 'purple',
-    lastCoffeeClaimedAt: null
+    lastCoffeeClaimedAt: null,
+    xpBoostUntil: null,
+    shieldUntil: null
   },
   tasks: [],
   habits: [],
@@ -350,7 +352,11 @@ export const DataProvider = ({ children, authUser }) => {
       } else if (item.effect === 'revive') {
         userUpdates = { hp: prev.user.maxHp ?? 100, isDead: false };
       } else if (item.effect === 'shield') {
-        userUpdates = { hpShieldDate: new Date().toDateString() };
+        const duration = 24 * 60 * 60 * 1000;
+        userUpdates = { shieldUntil: new Date(Date.now() + duration).toISOString() };
+      } else if (item.effect === 'xp_boost') {
+        const duration = 24 * 60 * 60 * 1000;
+        userUpdates = { xpBoostUntil: new Date(Date.now() + duration).toISOString() };
       }
 
       // Quitar item de inventario (consumible)
@@ -920,121 +926,139 @@ export const DataProvider = ({ children, authUser }) => {
       { id: 'extreme', name: 'Extremo', xp: 50, coins: 30, color: 'from-red-400 to-rose-600' }
     ],
     toggleHabit: (habitId) => {
-      const habits = gameData.habits || [];
-      const habit = habits.find(h => h.id === habitId);
-      if (!habit) return;
+      setGameData(prev => {
+        const habits = prev.habits || [];
+        const habit = habits.find(h => h.id === habitId);
+        if (!habit) return prev;
 
-      const isCompleting = !habit.completedToday;
-      const difficulties = [
-        { id: 'easy', xp: 10, coins: 5 },
-        { id: 'medium', xp: 20, coins: 10 },
-        { id: 'hard', xp: 35, coins: 20 },
-        { id: 'extreme', xp: 50, coins: 30 }
-      ];
-      const diff = difficulties.find(d => d.id === habit.difficulty) || difficulties[0];
-      
-      const totalXP = isCompleting ? (habit.xp || diff.xp) : 0;
-      const totalCoins = isCompleting ? (habit.coins || diff.coins) : 0;
+        const isCompleting = !habit.completedToday;
+        const difficulties = [
+          { id: 'easy', xp: 10, coins: 5 },
+          { id: 'medium', xp: 20, coins: 10 },
+          { id: 'hard', xp: 35, coins: 20 },
+          { id: 'extreme', xp: 50, coins: 30 }
+        ];
+        const diff = difficulties.find(d => d.id === habit.difficulty) || difficulties[0];
+        
+        let baseXP = habit.xp || diff.xp;
+        let baseCoins = habit.coins || diff.coins;
 
-      const updatedHabits = habits.map(h => {
-        if (h.id === habitId) {
-          return {
-            ...h,
-            completedToday: isCompleting,
-            streak: isCompleting ? h.streak + 1 : Math.max(0, h.streak - 1),
-            totalCompletions: isCompleting ? h.totalCompletions + 1 : Math.max(0, h.totalCompletions - 1),
-            lastCompleted: isCompleting ? new Date().toISOString() : h.lastCompleted,
-            earnedXP: isCompleting ? totalXP : 0,
-            earnedCoins: isCompleting ? totalCoins : 0,
-          };
-        }
-        return h;
-      });
+        // Factores RPG (Boosters)
+        const isBoosted = prev.user?.xpBoostUntil && new Date(prev.user.xpBoostUntil) > new Date();
+        const totalXP = isCompleting ? Math.round(baseXP * (isBoosted ? 1.5 : 1)) : 0;
+        const totalCoins = isCompleting ? baseCoins : 0;
 
-      updateGameData(prev => ({
-        ...prev,
-        habits: updatedHabits,
-        user: {
-          ...prev.user,
-          xp: Math.max(0, (prev.user.xp || 0) + (isCompleting ? totalXP : -(habit.earnedXP || 0))),
-          coins: Math.max(0, (prev.user.coins || 0) + (isCompleting ? totalCoins : -(habit.earnedCoins || 0))),
-          totalHabitsCompleted: Math.max(0, (prev.user.totalHabitsCompleted || 0) + (isCompleting ? 1 : -1)),
-          streak: isCompleting ? Math.max(prev.user.streak, habit.streak + 1) : prev.user.streak
-        }
-      }));
+        const updatedHabits = habits.map(h => {
+          if (h.id === habitId) {
+            return {
+              ...h,
+              completedToday: isCompleting,
+              streak: isCompleting ? h.streak + 1 : Math.max(0, h.streak - 1),
+              totalCompletions: isCompleting ? h.totalCompletions + 1 : Math.max(0, h.totalCompletions - 1),
+              lastCompleted: isCompleting ? new Date().toISOString() : h.lastCompleted,
+              earnedXP: isCompleting ? totalXP : 0,
+              earnedCoins: isCompleting ? totalCoins : 0,
+            };
+          }
+          return h;
+        });
 
-      // Sincronizar con Quests
-      if (isCompleting) {
-        setGameData(prev => {
-          const updatedQuests = (prev.quests?.daily || []).map(q => {
+        // Actualizar Quests
+        let updatedQuests = prev.quests;
+        if (isCompleting) {
+          const daily = (prev.quests?.daily || []).map(q => {
             if (q.type === 'habits' && !q.completed) {
-              const newProgress = q.progress + 1;
+              const newProgress = (q.progress || 0) + 1;
               return { ...q, progress: newProgress, completed: newProgress >= q.requirement };
             }
             return q;
           });
-          return { ...prev, quests: { ...prev.quests, daily: updatedQuests } };
-        });
+          updatedQuests = { ...prev.quests, daily };
+        }
 
-        addNotification(`¡Hábito completado! +${totalXP} XP +${totalCoins} coins`, 'success');
-        const progress = habit.difficulty === 'extreme' ? 4 : habit.difficulty === 'hard' ? 3 : habit.difficulty === 'medium' ? 2 : 1;
-        updateLifeAreaProgress(habit.category || 'personal', progress);
-      } else {
-        addNotification(`Hábito desmarcado. -${habit.earnedXP || 0} XP`, 'warning');
-      }
+        // Guardar parámetros para la notificación fuera del setter
+        setTimeout(() => {
+          if (isCompleting) {
+            addNotification(`¡Hábito completado! +${totalXP} XP ${isBoosted ? '⚡ (Boosted!)' : ''} +${totalCoins} coins`, 'success');
+          } else {
+            addNotification(`Hábito desmarcado. -${habit.earnedXP || 0} XP`, 'warning');
+          }
+        }, 0);
+
+        return {
+          ...prev,
+          habits: updatedHabits,
+          quests: updatedQuests,
+          user: {
+            ...prev.user,
+            xp: Math.max(0, (prev.user.xp || 0) + (isCompleting ? totalXP : -(habit.earnedXP || 0))),
+            coins: Math.max(0, (prev.user.coins || 0) + (isCompleting ? totalCoins : -(habit.earnedCoins || 0))),
+            totalHabitsCompleted: Math.max(0, (prev.user.totalHabitsCompleted || 0) + (isCompleting ? 1 : -1)),
+            streak: isCompleting ? Math.max(prev.user.streak || 0, habit.streak + 1) : prev.user.streak
+          }
+        };
+      });
     },
     toggleTask: (taskId) => {
-      const tasks = gameData.tasks || [];
-      const task = tasks.find(t => t.id === taskId);
-      if (!task) return;
+      setGameData(prev => {
+        const tasks = prev.tasks || [];
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return prev;
 
-      const isCompleting = !task.completed;
-      const xpBonus = task.priority === 'high' ? 20 : task.priority === 'medium' ? 10 : 5;
-      const totalXP = isCompleting ? (task.xp || 0) + xpBonus : 0;
-      const totalCoins = isCompleting ? Math.floor(totalXP / 2) : 0;
+        const isCompleting = !task.completed;
+        const xpBonus = task.priority === 'high' ? 20 : task.priority === 'medium' ? 10 : 5;
+        
+        // Factores RPG (Boosters)
+        const isBoosted = prev.user?.xpBoostUntil && new Date(prev.user.xpBoostUntil) > new Date();
+        const totalXP = isCompleting ? Math.round(((task.xp || 0) + xpBonus) * (isBoosted ? 1.5 : 1)) : 0;
+        const totalCoins = isCompleting ? Math.floor(totalXP / 2) : 0;
 
-      const updatedTasks = tasks.map(t => {
-        if (t.id === taskId) {
-          return {
-            ...t,
-            completed: isCompleting,
-            completedAt: isCompleting ? new Date().toISOString() : null,
-            earnedXP: isCompleting ? totalXP : 0,
-            earnedCoins: isCompleting ? totalCoins : 0,
-          };
-        }
-        return t;
-      });
+        const updatedTasks = tasks.map(t => {
+          if (t.id === taskId) {
+            return {
+              ...t,
+              completed: isCompleting,
+              completedAt: isCompleting ? new Date().toISOString() : null,
+              earnedXP: isCompleting ? totalXP : 0,
+              earnedCoins: isCompleting ? totalCoins : 0,
+            };
+          }
+          return t;
+        });
 
-      updateGameData(prev => ({
-        ...prev,
-        tasks: updatedTasks,
-        user: {
-          ...prev.user,
-          xp: Math.max(0, (prev.user.xp || 0) + (isCompleting ? totalXP : -(task.earnedXP || 0))),
-          coins: Math.max(0, (prev.user.coins || 0) + (isCompleting ? totalCoins : -(task.earnedCoins || 0))),
-          totalTasksCompleted: Math.max(0, (prev.user.totalTasksCompleted || 0) + (isCompleting ? 1 : -1))
-        }
-      }));
-
-      // Sincronizar con Quests
-      if (isCompleting) {
-        setGameData(prev => {
-          const updatedQuests = (prev.quests?.daily || []).map(q => {
+        // Actualizar Quests
+        let updatedQuests = prev.quests;
+        if (isCompleting) {
+          const daily = (prev.quests?.daily || []).map(q => {
             if (q.type === 'tasks' && !q.completed) {
-              const newProgress = q.progress + 1;
+              const newProgress = (q.progress || 0) + 1;
               return { ...q, progress: newProgress, completed: newProgress >= q.requirement };
             }
             return q;
           });
-          return { ...prev, quests: { ...prev.quests, daily: updatedQuests } };
-        });
+          updatedQuests = { ...prev.quests, daily };
+        }
 
-        addNotification(`¡Tarea completada! +${totalXP} XP +${totalCoins} coins`, 'success');
-        updateLifeAreaProgress(task.category || 'personal', task.priority === 'high' ? 5 : 3);
-      } else {
-        addNotification(`Tarea desmarcada. -${task.earnedXP || 0} XP`, 'warning');
-      }
+        setTimeout(() => {
+          if (isCompleting) {
+            addNotification(`¡Tarea completada! +${totalXP} XP ${isBoosted ? '⚡ (Boosted!)' : ''} +${totalCoins} coins`, 'success');
+          } else {
+            addNotification(`Tarea desmarcada. -${task.earnedXP || 0} XP`, 'warning');
+          }
+        }, 0);
+
+        return {
+          ...prev,
+          tasks: updatedTasks,
+          quests: updatedQuests,
+          user: {
+            ...prev.user,
+            xp: Math.max(0, (prev.user.xp || 0) + (isCompleting ? totalXP : -(task.earnedXP || 0))),
+            coins: Math.max(0, (prev.user.coins || 0) + (isCompleting ? totalCoins : -(task.earnedCoins || 0))),
+            totalTasksCompleted: Math.max(0, (prev.user.totalTasksCompleted || 0) + (isCompleting ? 1 : -1))
+          }
+        };
+      });
     },
     rankSystem,
     // HP y RPG

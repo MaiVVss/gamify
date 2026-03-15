@@ -26,10 +26,8 @@ function Dashboard({ addNotification, setActiveSection }) {
     const all = gameData.habits || [];
     return all.filter(habit => {
       if (habit.frequency === 'Diario') return true;
-      if ((habit.frequency === 'Semanal' || habit.frequency === 'Personalizado') && habit.customDays) {
-        return habit.customDays.includes(today);
-      }
-      return true;
+      if (habit.customDays && habit.customDays.includes(today)) return true;
+      return false;
     }).sort((a, b) => {
       if (a.completedToday !== b.completedToday) return a.completedToday ? 1 : -1;
       return b.streak - a.streak;

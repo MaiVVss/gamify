@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 function Dashboard({ addNotification, setActiveSection }) {
-  const { gameData, themes } = useData();
+  const { gameData, themes, toggleHabit, toggleTask } = useData();
   
   const currentTheme = gameData.user?.theme || 'light';
   const themeConfig = themes[currentTheme] || themes.light;
@@ -26,10 +26,8 @@ function Dashboard({ addNotification, setActiveSection }) {
     const all = gameData.habits || [];
     return all.filter(habit => {
       if (habit.frequency === 'Diario') return true;
-      if ((habit.frequency === 'Semanal' || habit.frequency === 'Personalizado') && habit.customDays) {
-        return habit.customDays.includes(today);
-      }
-      return true;
+      if (habit.customDays && habit.customDays.includes(today)) return true;
+      return false;
     }).sort((a, b) => {
       if (a.completedToday !== b.completedToday) return a.completedToday ? 1 : -1;
       return b.streak - a.streak;
@@ -213,8 +211,11 @@ function Dashboard({ addNotification, setActiveSection }) {
               todayHabits.map(habit => (
                 <div 
                   key={habit.id}
-                  onClick={() => setActiveSection && setActiveSection('habits')}
                   className={`group ${themeConfig.card} rounded-2xl p-4 border ${themeConfig.border} shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex items-center gap-4 ${habit.completedToday ? 'opacity-50 bg-gray-50/50 scale-[0.98]' : 'hover:-translate-y-1'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleHabit(habit.id);
+                  }}
                 >
                   <div className="flex-shrink-0">
                     {habit.completedToday ? (
@@ -336,7 +337,7 @@ function Dashboard({ addNotification, setActiveSection }) {
                 return (
                   <div 
                     key={reward.id}
-                    onClick={() => setActiveSection && setActiveSection('rewards')}
+                    onClick={() => setActiveSection && setActiveSection('rewards-user')}
                     className={`group ${themeConfig.card} rounded-[1.5rem] p-3 sm:p-4 border ${themeConfig.border} shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col items-center text-center gap-2 sm:gap-3 hover:-translate-y-1`}
                   >
                     <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center text-2xl sm:text-3xl shadow-inner border border-purple-100/50 group-hover:scale-110 transition-transform">

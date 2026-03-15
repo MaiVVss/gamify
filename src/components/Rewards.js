@@ -3,7 +3,7 @@ import { useData } from '../context/DataContext';
 import {
   ShoppingBag, Package, Gift, Plus, Trash2, Edit2, CheckCircle,
   Sparkles, Zap, Shield, FlaskConical, Heart, Crown, Star,
-  ChevronRight, AlertTriangle, X
+  ChevronRight, AlertTriangle, X, Coins
 } from 'lucide-react';
 
 const iconOptions = [
@@ -12,11 +12,17 @@ const iconOptions = [
 ];
 
 const exampleRewards = [
-  { id: 1, name: 'Café gratuito', cost: 100, icon: '☕', claimed: false, color: 'from-amber-400 to-yellow-600' },
-  { id: 2, name: 'Noche de películas', cost: 200, icon: '🎬', claimed: false, color: 'from-purple-400 to-pink-600' },
-  { id: 3, name: 'Gaming time (2h)', cost: 300, icon: '🎮', claimed: false, color: 'from-blue-400 to-indigo-600' },
-  { id: 4, name: 'Libro nuevo', cost: 250, icon: '📚', claimed: false, color: 'from-green-400 to-emerald-600' },
-  { id: 5, name: 'Masaje relajante', cost: 500, icon: '💆', claimed: false, color: 'from-pink-400 to-rose-600' },
+  { id: 1, name: 'Café gratuito', cost: 100, icon: '☕', claimed: false, color: 'from-amber-400 to-yellow-600', cooldown: 'none' },
+  { id: 2, name: 'Noche de películas', cost: 200, icon: '🎬', claimed: false, color: 'from-purple-400 to-pink-600', cooldown: 'none' },
+  { id: 3, name: 'Gaming time (2h)', cost: 300, icon: '🎮', claimed: false, color: 'from-blue-400 to-indigo-600', cooldown: 'none' },
+  { id: 4, name: 'Libro nuevo', cost: 250, icon: '📚', claimed: false, color: 'from-green-400 to-emerald-600', cooldown: 'none' },
+  { id: 5, name: 'Masaje relajante', cost: 500, icon: '💆', claimed: false, color: 'from-pink-400 to-rose-600', cooldown: 'none' },
+];
+
+const cooldownOptions = [
+  { id: 'none', label: 'Única vez' },
+  { id: '8h', label: 'Cada 8 horas' },
+  { id: '24h', label: 'Cada 24 horas' }
 ];
 
 const colorOptions = [
@@ -239,7 +245,7 @@ function MyRewardCard({ reward, coins, onClaim, onEdit, onDelete }) {
         )}
         {reward.claimed && (
           <div style={{ fontSize: 12, color: '#10b981', fontWeight: 600 }}>
-            ✅ Canjeado {reward.claimedAt ? new Date(reward.claimedAt).toLocaleDateString('es-ES') : ''}
+            ✅ {reward.cooldown && reward.cooldown !== 'none' ? 'En enfriamiento' : `Canjeado ${reward.claimedAt ? new Date(reward.claimedAt).toLocaleDateString('es-ES') : ''}`}
           </div>
         )}
       </div>
@@ -282,7 +288,7 @@ function MyRewardCard({ reward, coins, onClaim, onEdit, onDelete }) {
   );
 }
 
-function Rewards({ addNotification }) {
+function Rewards({ addNotification, activeTabHint }) {
   const { gameData, updateGameData, buyItem, usePotion: activatePotion, SHOP_ITEMS, themes } = useData();
   const [activeTab, setActiveTab] = useState('shop');
   const [rewards, setRewards] = useState(
@@ -291,7 +297,7 @@ function Rewards({ addNotification }) {
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingReward, setEditingReward] = useState(null);
-  const [newReward, setNewReward] = useState({ name: '', cost: 100, icon: '🎁', color: colorOptions[0] });
+  const [newReward, setNewReward] = useState({ name: '', cost: 100, icon: '🎁', color: colorOptions[0], cooldown: 'none' });
   const [rewardFilter, setRewardFilter] = useState('available');
 
   const currentTheme = gameData.user?.theme || 'light';
@@ -302,10 +308,52 @@ function Rewards({ addNotification }) {
   const isDead = gameData.user?.isDead || false;
 
   useEffect(() => {
+    if (activeTabHint === 'my-rewards') {
+      setActiveTab('my-rewards');
+    } else if (activeTabHint === 'inventory') {
+      setActiveTab('inventory');
+    }
+  }, [activeTabHint]);
+
+  useEffect(() => {
     if (gameData.rewards.length === 0) {
       updateGameData({ rewards: exampleRewards });
     }
   }, [gameData.rewards.length, updateGameData]);
+
+  const now = new Date();
+  const isXpBoostActive = gameData.user?.xpBoostUntil && new Date(gameData.user.xpBoostUntil) > now;
+  const isShieldActive = gameData.user?.shieldUntil && new Date(gameData.user.shieldUntil) > now;
+
+  // -- Free Coffee -------------------------------------------------------------
+  const lastCoffeeTime = gameData.user?.lastCoffeeClaimedAt;
+  const coffeeCooldown = 8 * 60 * 60 * 1000; // 8 hours
+  const isCoffeeOnCooldown = lastCoffeeTime && (Date.now() - new Date(lastCoffeeTime).getTime() < coffeeCooldown);
+  
+  const getRemainingCoffeeTime = () => {
+    if (!lastCoffeeTime) return '';
+    const diff = coffeeCooldown - (Date.now() - new Date(lastCoffeeTime).getTime());
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  };
+
+  const claimFreeCoffee = () => {
+    if (isCoffeeOnCooldown) {
+      addNotification(`El café gratuito está en enfriamiento. Vuelve en ${getRemainingCoffeeTime()}`, 'warning');
+      return;
+    }
+    
+    updateGameData(prev => ({
+      ...prev,
+      user: {
+        ...prev.user,
+        energy: Math.min(100, (prev.user.energy || 0) + 20),
+        lastCoffeeClaimedAt: new Date().toISOString()
+      }
+    }));
+    addNotification('☕ ¡Café gratuito reclamado! +20 Energía', 'success');
+  };
 
   // ── Shop ──────────────────────────────────────────────────────────────────
   const handleBuyItem = (shopId) => {
@@ -344,14 +392,14 @@ function Rewards({ addNotification }) {
     const updated = [...rewards, reward];
     setRewards(updated);
     updateGameData({ rewards: updated });
-    setNewReward({ name: '', cost: 100, icon: '🎁', color: colorOptions[0] });
+    setNewReward({ name: '', cost: 100, icon: '🎁', color: colorOptions[0], cooldown: 'none' });
     setShowModal(false);
     addNotification('Recompensa creada', 'success');
   };
 
   const handleEditReward = (reward) => {
     setEditingReward(reward);
-    setNewReward({ name: reward.name, cost: reward.cost, icon: reward.icon, color: reward.color });
+    setNewReward({ name: reward.name, cost: reward.cost, icon: reward.icon, color: reward.color, cooldown: reward.cooldown || 'none' });
     setShowEditModal(true);
   };
 
@@ -363,7 +411,7 @@ function Rewards({ addNotification }) {
     updateGameData({ rewards: updated });
     setShowEditModal(false);
     setEditingReward(null);
-    setNewReward({ name: '', cost: 100, icon: '🎁', color: colorOptions[0] });
+    setNewReward({ name: '', cost: 100, icon: '🎁', color: colorOptions[0], cooldown: 'none' });
   };
 
   const handleDeleteReward = (rewardId) => {
@@ -376,11 +424,68 @@ function Rewards({ addNotification }) {
     }
   };
 
-  const filteredRewards = rewardFilter === 'available'
-    ? rewards.filter(r => !r.claimed)
-    : rewards.filter(r => r.claimed);
+  const isCooldownPassed = (reward) => {
+    if (!reward.claimedAt) return true;
+    const lastClaim = new Date(reward.claimedAt).getTime();
+    const elapsed = Date.now() - lastClaim;
+    const cooldownMs = reward.cooldown === '8h' ? 8 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    return elapsed >= cooldownMs;
+  };
+
+  const filteredRewards = rewards.filter(r => {
+    const onCooldown = r.cooldown && r.cooldown !== 'none' && !isCooldownPassed(r);
+    if (rewardFilter === 'available') {
+      return !r.claimed || (r.cooldown !== 'none' && isCooldownPassed(r));
+    } else {
+      return r.claimed && (r.cooldown === 'none' || !isCooldownPassed(r));
+    }
+  });
 
   const inventory = gameData.inventory || [];
+  const renderInventoryItems = () => {
+    const inventory = gameData.inventory || [];
+    if (inventory.length === 0) {
+      return (
+        <div className="col-span-full py-12 text-center text-gray-400">
+          <Package size={48} className="mx-auto mb-4 opacity-20" />
+          <p>Tu inventario está vacío</p>
+        </div>
+      );
+    }
+
+    return inventory.map((item) => {
+      const isActive = (item.effect === 'xp_boost' && isXpBoostActive) || (item.effect === 'shield' && isShieldActive);
+
+      return (
+        <div key={item.id} className={`p-4 rounded-2xl border ${isActive ? 'bg-blue-50 border-blue-100' : 'bg-white border-gray-100'} shadow-sm`}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-2xl">
+              {item.icon}
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-800">{item.name}</h4>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider">
+                {isActive ? 'En uso' : 'Consumible'}
+              </p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mb-4">{item.description}</p>
+          <button
+            onClick={() => activatePotion(item.id)}
+            disabled={isActive}
+            className={`w-full py-2 rounded-xl text-sm font-bold transition-all ${
+              isActive
+                ? 'bg-blue-100 text-blue-500 cursor-not-allowed'
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-100'
+            }`}
+          >
+            {isActive ? 'Efecto Activo' : 'Usar Ahora'}
+          </button>
+        </div>
+      );
+    });
+  };
+
   const tabs = [
     { id: 'shop', label: 'Tienda RPG', icon: ShoppingBag },
     { id: 'rewards', label: 'Mis Recompensas', icon: Gift },
@@ -402,7 +507,33 @@ function Rewards({ addNotification }) {
             Gana coins completando tareas y hábitos. Úsalos para sobrevivir y recompensarte.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Botón de Café Gratuito */}
+          <button
+            onClick={claimFreeCoffee}
+            disabled={isCoffeeOnCooldown}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 16px',
+              borderRadius: 12,
+              border: 'none',
+              cursor: isCoffeeOnCooldown ? 'not-allowed' : 'pointer',
+              background: isCoffeeOnCooldown 
+                ? 'rgba(255,255,255,0.1)' 
+                : 'linear-gradient(135deg, #f59e0b, #d97706)',
+              color: isCoffeeOnCooldown ? '#a78bfa' : '#fff',
+              fontWeight: 700,
+              fontSize: 12,
+              transition: 'all 0.2s',
+              boxShadow: isCoffeeOnCooldown ? 'none' : '0 4px 12px rgba(0,0,0,0.2)'
+            }}
+          >
+            <span style={{ fontSize: 18 }}>☕</span>
+            {isCoffeeOnCooldown ? getRemainingCoffeeTime() : 'Café Gratis'}
+          </button>
+
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 22, fontWeight: 800, color: '#fcd34d' }}>🪙 {coins}</div>
             <div style={{ fontSize: 11, color: '#a78bfa' }}>Coins</div>
@@ -490,14 +621,42 @@ function Rewards({ addNotification }) {
             Items del sistema para mantener a tu personaje con vida y potenciar tu progreso.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-            {shopData.map(item => (
-              <ShopItem
-                key={item.shopId}
-                item={item}
-                canAfford={coins >= item.cost}
-                onBuy={handleBuyItem}
-              />
-            ))}
+            {shopData.map(item => {
+        const isAffordable = coins >= item.cost;
+        const isActive = (item.effect === 'xp_boost' && isXpBoostActive) || (item.effect === 'shield' && isShieldActive);
+
+        return (
+          <div key={item.shopId} className={`p-4 rounded-2xl border ${isActive ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-100'} shadow-sm relative overflow-hidden`}>
+            {isActive && (
+              <div className="absolute top-2 right-2 px-2 py-0.5 bg-blue-500 text-white text-[10px] font-bold rounded-full">
+                ACTIVO
+              </div>
+            )}
+            <div className="text-3xl mb-3">{item.icon}</div>
+            <h4 className="font-bold text-gray-800 mb-1">{item.name}</h4>
+            <p className="text-xs text-gray-500 mb-4 line-clamp-2">{item.description}</p>
+            <div className="flex items-center justify-between mt-auto">
+              <div className="flex items-center gap-1 text-amber-600 font-bold">
+                <Coins size={14} />
+                <span>{item.cost}</span>
+              </div>
+              <button
+                onClick={() => buyItem(item.shopId)}
+                disabled={!isAffordable || isActive}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  isActive 
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : isAffordable 
+                      ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-sm' 
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {isActive ? 'Activo' : 'Comprar'}
+              </button>
+            </div>
+          </div>
+        );
+            })}
           </div>
         </div>
       )}
@@ -554,20 +713,8 @@ function Rewards({ addNotification }) {
 
       {/* ── INVENTORY TAB ───────────────────────────────────────────────────── */}
       {activeTab === 'inventory' && (
-        <div>
-          {inventory.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9ca3af' }}>
-              <Package style={{ width: 40, height: 40, margin: '0 auto 12px', opacity: 0.3 }} />
-              <p style={{ margin: 0, fontWeight: 600 }}>Tu inventario está vacío</p>
-              <p style={{ margin: '6px 0 0', fontSize: 13 }}>Compra items en la Tienda RPG para verlos aquí</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {inventory.map(item => (
-                <InventoryItem key={item.id} item={item} onUse={activatePotion} />
-              ))}
-            </div>
-          )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {renderInventoryItems()}
         </div>
       )}
 
@@ -605,6 +752,21 @@ function Rewards({ addNotification }) {
                   onChange={e => setNewReward({ ...newReward, cost: parseInt(e.target.value) || 0 })}
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
                   min="1" />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 6 }}>Reinicio (Cooldown)</label>
+                <select 
+                  value={newReward.cooldown}
+                  onChange={e => setNewReward({ ...newReward, cooldown: e.target.value })}
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box', appearance: 'none', background: '#fff' }}
+                >
+                  {cooldownOptions.map(opt => (
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  ))}
+                </select>
+                <p style={{ margin: '4px 0 0', fontSize: 11, color: '#6b7280' }}>
+                  Determina si la recompensa se puede volver a canjear después de un tiempo.
+                </p>
               </div>
               <div>
                 <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 8 }}>Icono</label>

@@ -277,7 +277,8 @@ function BossBattles({ addNotification }) {
   const [challengeStartTime, setChallengeStartTime] = useState(null);
   const [challengeProgress, setChallengeProgress] = useState(0);
   const [challengeResult, setChallengeResult] = useState(null);
-  const [unlockedBosses, setUnlockedBosses] = useState(['procrastination']); // Primer boss desbloqueado
+  const unlockedBosses = gameData.unlockedBosses || ['procrastination'];
+  const bossDefeatedDates = gameData.bossDefeatedDates || {};
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
 
@@ -298,7 +299,7 @@ function BossBattles({ addNotification }) {
         h.name.toLowerCase().includes('focus') ||
         h.name.toLowerCase().includes('concentración')
       );
-      if (hasFocusHabits && !unlockedBosses.includes('distraction')) {
+      if (hasFocusHabits && !newUnlocked.includes('distraction')) {
         newUnlocked.push('distraction');
       }
 
@@ -308,30 +309,31 @@ function BossBattles({ addNotification }) {
         h.name.toLowerCase().includes('gimnasio') ||
         h.name.toLowerCase().includes('correr')
       );
-      if (hasExerciseHabits && !unlockedBosses.includes('laziness')) {
+      if (hasExerciseHabits && !newUnlocked.includes('laziness')) {
         newUnlocked.push('laziness');
       }
 
       // Desbloquear Perfeccionismo si tiene tareas
-      if (gameData.tasks?.length > 5 && !unlockedBosses.includes('perfectionism')) {
+      if (gameData.tasks?.length > 5 && !newUnlocked.includes('perfectionism')) {
         newUnlocked.push('perfectionism');
       }
 
       // Desbloquear Miedo si tiene nivel alto
-      if (gameData.user?.level >= 3 && !unlockedBosses.includes('fear')) {
+      if (gameData.user?.level >= 3 && !newUnlocked.includes('fear')) {
         newUnlocked.push('fear');
       }
 
       if (newUnlocked.length > unlockedBosses.length) {
-        setUnlockedBosses(newUnlocked);
-        const newBoss = newUnlocked[newUnlocked.length - 1];
-        const boss = bossBattles[newBoss];
+        const newlyUnlockedBossId = newUnlocked[newUnlocked.length - 1];
+        const boss = bossBattles[newlyUnlockedBossId];
+        
+        updateGameData({ unlockedBosses: newUnlocked });
         addNotification(`🔓 Nuevo boss desbloqueado: ${boss.title}!`, 'success');
       }
     };
 
     checkUnlockConditions();
-  }, [gameData, unlockedBosses, addNotification]);
+  }, [gameData.habits, gameData.tasks, gameData.user?.level, unlockedBosses, addNotification, updateGameData]);
 
   // Timer para el desafío con soporte Pomodoro
   useEffect(() => {
@@ -433,7 +435,11 @@ function BossBattles({ addNotification }) {
       updateGameData({
         user: updatedUser,
         achievements: achievements,
-        defeatedBosses: [...(gameData.defeatedBosses || []), challenge.id]
+        defeatedBosses: [...(gameData.defeatedBosses || []), challenge.id],
+        bossDefeatedDates: {
+          ...(gameData.bossDefeatedDates || {}),
+          [challenge.id]: new Date().toISOString()
+        }
       });
 
       addNotification(`🏆 ¡Victoria! Has completado el desafío y ganado +${challenge.rewards.xp} XP y +${challenge.rewards.coins} coins`, 'success');
@@ -784,6 +790,9 @@ function BossBattles({ addNotification }) {
       <div className={`transition-all duration-500 ${selectedBossId ? 'opacity-100' : 'opacity-0 pointer-events-none h-0 overflow-hidden'}`}>
         {selectedBossId && (() => {
           const boss = bossBattles[selectedBossId];
+          const lastDefeated = bossDefeatedDates[boss.id];
+          const cooldownMs = 24 * 60 * 60 * 1000; // 24 horas
+          const onCooldown = lastDefeated && (Date.now() - new Date(lastDefeated).getTime() < cooldownMs);
           const isDefeated = gameData.defeatedBosses?.includes(boss.id);
           const playerLevel = gameData.user?.level || 1;
           const playerStats = gameData.user || {};
@@ -839,7 +848,18 @@ function BossBattles({ addNotification }) {
                           '⭐⭐⭐⭐⭐ Legendario'}
                   </span>
 
-                  {!isDefeated && (
+                  {isDefeated && onCooldown && (
+                    <div className="mt-3 flex flex-col items-center gap-1">
+                      <div className="flex items-center justify-center gap-1 text-green-700 text-xs font-semibold">
+                        <CheckCircle className="w-4 h-4" /> Ya derrotado
+                      </div>
+                      <div className="text-[10px] text-gray-500 flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5" /> Re-disponible en {Math.ceil((cooldownMs - (Date.now() - new Date(lastDefeated).getTime())) / (60 * 60 * 1000))}h
+                      </div>
+                    </div>
+                  )}
+
+                  {(!isDefeated || !onCooldown) && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -875,11 +895,6 @@ function BossBattles({ addNotification }) {
                     >
                       {canBattle ? '🎯 Iniciar Desafío' : '📋 Cumple requisito'}
                     </button>
-                  )}
-                  {isDefeated && (
-                    <div className="mt-3 flex items-center justify-center gap-1 text-green-700 text-xs font-semibold">
-                      <CheckCircle className="w-4 h-4" /> Ya derrotado
-                    </div>
                   )}
                 </div>
               </div>
@@ -981,16 +996,15 @@ function BossBattles({ addNotification }) {
                   <div className="p-5">
                     {/* Status Badge */}
                     <div className="absolute top-3 right-3 z-20">
-                      {isDefeated && (
+                      {isDefeated && (bossDefeatedDates[boss.id] && (Date.now() - new Date(bossDefeatedDates[boss.id]).getTime() < 24 * 60 * 60 * 1000)) ? (
                         <div className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">
                           <CheckCircle className="w-3 h-3" /> Derrotado
                         </div>
-                      )}
-                      {isUnlocked && !isDefeated && (
+                      ) : isUnlocked ? (
                         <div className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs">
                           <AlertTriangle className="w-3 h-3" /> Disponible
                         </div>
-                      )}
+                      ) : null}
                     </div>
 
                     <div className="text-center">
@@ -1026,7 +1040,7 @@ function BossBattles({ addNotification }) {
                         </span>
                       )}
 
-                      {isUnlocked && !isDefeated && (
+                      {isUnlocked && !(isDefeated && (bossDefeatedDates[boss.id] && (Date.now() - new Date(bossDefeatedDates[boss.id]).getTime() < 24 * 60 * 60 * 1000))) && (
                         <p className="text-xs text-purple-500 mt-2 font-medium">
                           ↑ Pulsa para seleccionar
                         </p>

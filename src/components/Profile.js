@@ -5,6 +5,7 @@ import {
   Star, Trophy, Flame, Target, Brain, Briefcase, Users, DollarSign, Home,
   ChevronRight, Award, TrendingUp, Scroll
 } from 'lucide-react';
+import { allAchievements } from './Achievements';
 
 // ── Datos RPG ─────────────────────────────────────────────────────────────────
 
@@ -413,14 +414,24 @@ function Profile({ addNotification }) {
                 <p style={{ color: '#9ca3af', fontSize: 13 }}>Aún no has desbloqueado logros. ¡Completa misiones!</p>
               ) : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                  {achievements.slice(0, 12).map((id, i) => (
-                    <div key={i} style={{
-                      width: 48, height: 48, borderRadius: 12,
-                      background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 22, boxShadow: '0 2px 8px rgba(251,191,36,0.3)'
-                    }} title={`Logro #${id}`}>⭐</div>
-                  ))}
+                  {achievements.slice(0, 12).map((id, i) => {
+                    // Buscar el logro en todas las categorías
+                    let achievementData = null;
+                    Object.values(allAchievements).forEach(category => {
+                      if (category[id]) achievementData = category[id];
+                    });
+                    
+                    return (
+                      <div key={i} style={{
+                        width: 48, height: 48, borderRadius: 12,
+                        background: achievementData ? `linear-gradient(135deg, ${achievementData.color.split(' ')[0].replace('from-', '') === 'gray' ? '#9ca3af' : '#fbbf24'}, ${achievementData.color.split(' ')[2]?.replace('to-', '') || '#f59e0b'})` : 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                      }} title={achievementData?.name || `Logro #${id}`}>
+                        {achievementData?.icon || '⭐'}
+                      </div>
+                    );
+                  })}
                   {achievements.length > 12 && (
                     <div style={{
                       width: 48, height: 48, borderRadius: 12, background: '#f3f4f6',

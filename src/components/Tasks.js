@@ -3,7 +3,7 @@ import { useData } from '../context/DataContext';
 import { CheckSquare, Plus, Search, Calendar, AlertCircle, CheckCircle, Clock, Zap, Edit2, Trash2 } from 'lucide-react';
 
 function Tasks({ addNotification }) {
-  const { gameData, updateGameData, updateLifeAreaProgress, updateObjectiveProgress, themes } = useData();
+  const { gameData, updateGameData, updateLifeAreaProgress, updateObjectiveProgress, themes, toggleTask } = useData();
   const { tasks } = gameData;
   
   const currentTheme = gameData.user?.theme || 'light';
@@ -43,31 +43,27 @@ function Tasks({ addNotification }) {
     switch(filter) {
       case 'today':
         filtered = filtered.filter(task => {
-          if (!task.hasDueDate) return false;
-          const today = new Date().toDateString();
-          if (task.endDate) {
-            return new Date(task.endDate).toDateString() === today;
-          }
-          if (task.dueDate) {
-            return new Date(task.dueDate).toDateString() === today;
-          }
-          return false;
+          if (!task.dueDate) return false;
+          const today = new Date();
+          const taskDate = new Date(task.dueDate);
+          return (
+            taskDate.getFullYear() === today.getFullYear() &&
+            taskDate.getMonth() === today.getMonth() &&
+            taskDate.getDate() === today.getDate()
+          );
         });
         break;
       case 'week':
-        const weekFromNow = new Date();
+        const todayAtStart = new Date();
+        todayAtStart.setHours(0, 0, 0, 0);
+        const weekFromNow = new Date(todayAtStart);
         weekFromNow.setDate(weekFromNow.getDate() + 7);
+        weekFromNow.setHours(23, 59, 59, 999);
+        
         filtered = filtered.filter(task => {
-          if (!task.hasDueDate) return false;
-          if (task.endDate) {
-            const taskDate = new Date(task.endDate);
-            return taskDate >= new Date() && taskDate <= weekFromNow;
-          }
-          if (task.dueDate) {
-            const taskDate = new Date(task.dueDate);
-            return taskDate >= new Date() && taskDate <= weekFromNow;
-          }
-          return false;
+          if (!task.dueDate) return false;
+          const taskDate = new Date(task.dueDate);
+          return taskDate >= todayAtStart && taskDate <= weekFromNow;
         });
         break;
       case 'urgent':
@@ -239,64 +235,7 @@ function Tasks({ addNotification }) {
   };
 
   const handleToggleTask = (taskId) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    const isCompleting = !task.completed;
-
-    // Calcular recompensas (solo si completando)
-    const xpBonus = task.priority === 'high' ? 20 : task.priority === 'medium' ? 10 : 5;
-    const totalXP = isCompleting ? (task.xp || 0) + xpBonus : 0;
-    const totalCoins = isCompleting ? Math.floor(totalXP / 2) : 0;
-
-    // Actualizar la tarea con el estado y guardar/limpiar las recompensas ganadas
-    const updatedTasks = tasks.map(t => {
-      if (t.id === taskId) {
-        return {
-          ...t,
-          completed: isCompleting,
-          completedAt: isCompleting ? new Date().toISOString() : null,
-          // Guardar las recompensas exactas para poder descontarlas si se desmarca
-          earnedXP: isCompleting ? totalXP : 0,
-          earnedCoins: isCompleting ? totalCoins : 0,
-        };
-      }
-      return t;
-    });
-
-    // Actualizar tareas y usuario de forma atómica en un solo setGameData
-    updateGameData(prev => ({
-      ...prev,
-      tasks: updatedTasks,
-      user: {
-        ...prev.user,
-        // Si completando: sumar. Si desmarcando: descontar lo que se había ganado (task.earnedXP)
-        xp: Math.max(0, (prev.user.xp || 0) + (isCompleting ? totalXP : -(task.earnedXP || 0))),
-        coins: Math.max(0, (prev.user.coins || 0) + (isCompleting ? totalCoins : -(task.earnedCoins || 0))),
-        totalTasksCompleted: Math.max(0, (prev.user.totalTasksCompleted || 0) + (isCompleting ? 1 : -1)),
-      }
-    }));
-
-    if (isCompleting) {
-      // Actualizar áreas de vida relacionadas
-      const lifeAreaProgress = task.priority === 'high' ? 5 : task.priority === 'medium' ? 3 : 2;
-      if (task.category) {
-        updateLifeAreaProgress(task.category, lifeAreaProgress);
-        const relatedObjectives = getRelatedObjectives(task.category, task.title);
-        relatedObjectives.forEach(objectiveId => {
-          updateObjectiveProgress(task.category, objectiveId, 10);
-        });
-      } else {
-        updateLifeAreaProgress('personal', lifeAreaProgress);
-      }
-      addNotification(`¡Tarea completada! +${totalXP} XP +${totalCoins} coins`, 'success');
-    } else {
-      const deductedXP = task.earnedXP || 0;
-      const deductedCoins = task.earnedCoins || 0;
-      if (deductedXP > 0) {
-        addNotification(`Tarea desmarcada. -${deductedXP} XP -${deductedCoins} coins`, 'warning');
-      }
-    }
+    toggleTask(taskId);
   };
 
   // Función para obtener objetivos relacionados con una tarea

@@ -86,7 +86,7 @@ function HPBar({ hp, maxHp }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <Heart style={{ width: 16, height: 16, color, flexShrink: 0, animation: isDanger ? 'pulse 1s infinite' : 'none' }} />
-      <div style={{ flex: 1, height: 10, background: '#e5e7eb', borderRadius: 999, overflow: 'hidden' }}>
+      <div style={{ flex: 1, height: 10, background: 'var(--bg-secondary)', borderRadius: 999, overflow: 'hidden' }}>
         <div style={{
           height: '100%', width: `${pct}%`, background: color,
           borderRadius: 999, transition: 'width 0.5s ease, background 0.5s'
@@ -104,7 +104,7 @@ function ShopItem({ item, canAfford, onBuy }) {
   const Icon = item.iconComponent;
   return (
     <div style={{
-      background: '#fff', border: `2px solid ${rarity.color}33`,
+      background: 'var(--bg-card)', border: `2px solid ${rarity.color}33`,
       borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', gap: 12,
       position: 'relative', overflow: 'hidden',
       boxShadow: `0 2px 12px ${rarity.color}18`,
@@ -116,7 +116,7 @@ function ShopItem({ item, canAfford, onBuy }) {
       {/* Rarity badge */}
       <span style={{
         position: 'absolute', top: 12, right: 12,
-        background: rarity.bg, color: rarity.color,
+        background: 'var(--bg-secondary)', color: rarity.color,
         fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
         border: `1px solid ${rarity.color}44`, textTransform: 'uppercase', letterSpacing: 1
       }}>{rarity.label}</span>
@@ -130,8 +130,8 @@ function ShopItem({ item, canAfford, onBuy }) {
           {item.icon}
         </div>
         <div>
-          <h3 style={{ margin: 0, fontWeight: 700, fontSize: 15, color: '#1f2937' }}>{item.name}</h3>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.4 }}>{item.description}</p>
+          <h3 style={{ margin: 0, fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>{item.name}</h3>
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{item.description}</p>
         </div>
       </div>
 
@@ -142,8 +142,8 @@ function ShopItem({ item, canAfford, onBuy }) {
           padding: '10px 0', borderRadius: 10, border: 'none', cursor: canAfford ? 'pointer' : 'not-allowed',
           background: canAfford
             ? `linear-gradient(135deg, ${rarity.color}, ${rarity.color}cc)`
-            : '#e5e7eb',
-          color: canAfford ? '#fff' : '#9ca3af',
+            : 'var(--bg-secondary)',
+          color: canAfford ? '#fff' : 'var(--text-secondary)',
           fontWeight: 700, fontSize: 14,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           transition: 'opacity 0.15s'
@@ -159,20 +159,20 @@ function InventoryItem({ item, onUse }) {
   const canUse = item.effect === 'heal' || item.effect === 'revive' || item.effect === 'shield';
   return (
     <div style={{
-      background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14,
+      background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 14,
       padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14,
       boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
     }}>
       <div style={{
-        width: 44, height: 44, borderRadius: 12, background: '#f3f4f6',
+        width: 44, height: 44, borderRadius: 12, background: 'var(--bg-secondary)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0
       }}>
         {item.icon}
       </div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 700, color: '#1f2937', fontSize: 14 }}>{item.name}</div>
-        <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{item.description}</div>
-        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+        <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 14 }}>{item.name}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{item.description}</div>
+        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
           Comprado {new Date(item.purchasedAt).toLocaleDateString('es-ES')}
         </div>
       </div>
@@ -199,7 +199,7 @@ function MyRewardCard({ reward, coins, onClaim, onEdit, onDelete }) {
 
   return (
     <div style={{
-      background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16,
+      background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 16,
       padding: 20, display: 'flex', alignItems: 'center', gap: 16,
       opacity: reward.claimed ? 0.65 : 1,
       boxShadow: '0 2px 8px rgba(0,0,0,0.06)', transition: 'box-shadow 0.2s',
@@ -222,17 +222,17 @@ function MyRewardCard({ reward, coins, onClaim, onEdit, onDelete }) {
 
       {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700, color: '#1f2937', fontSize: 15, marginBottom: 4 }}>{reward.name}</div>
+        <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 15, marginBottom: 4 }}>{reward.name}</div>
         {isAvailable && (
           <>
-            <div style={{ height: 6, background: '#f3f4f6', borderRadius: 999, margin: '6px 0', overflow: 'hidden' }}>
+            <div style={{ height: 6, background: 'var(--bg-secondary)', borderRadius: 999, margin: '6px 0', overflow: 'hidden' }}>
               <div style={{
                 height: '100%', width: `${progress}%`,
-                background: canAfford ? 'linear-gradient(90deg, #f59e0b, #f97316)' : 'linear-gradient(90deg, #e5e7eb, #d1d5db)',
+                background: canAfford ? 'linear-gradient(90deg, #f59e0b, #f97316)' : 'var(--border-color)',
                 borderRadius: 999, transition: 'width 0.5s'
               }} />
             </div>
-            <div style={{ fontSize: 12, color: canAfford ? '#16a34a' : '#9ca3af' }}>
+            <div style={{ fontSize: 12, color: canAfford ? '#16a34a' : 'var(--text-secondary)' }}>
               {canAfford ? '✅ ¡Puedes canjearlo!' : `Faltan ${reward.cost - coins} coins`}
             </div>
           </>
@@ -252,7 +252,7 @@ function MyRewardCard({ reward, coins, onClaim, onEdit, onDelete }) {
         {isAvailable && (
           <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={() => onEdit(reward)}
-              style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', cursor: 'pointer', color: '#3b82f6' }}>
+              style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', cursor: 'pointer', color: '#3b82f6' }}>
               <Edit2 style={{ width: 14, height: 14 }} />
             </button>
             <button onClick={() => onDelete(reward.id)}
@@ -264,8 +264,8 @@ function MyRewardCard({ reward, coins, onClaim, onEdit, onDelete }) {
               disabled={!canAfford}
               style={{
                 padding: '6px 14px', borderRadius: 8, border: 'none', cursor: canAfford ? 'pointer' : 'not-allowed',
-                background: canAfford ? 'linear-gradient(135deg, #f59e0b, #f97316)' : '#f3f4f6',
-                color: canAfford ? '#fff' : '#9ca3af', fontWeight: 700, fontSize: 13
+                background: canAfford ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 'var(--bg-secondary)',
+                color: canAfford ? '#fff' : 'var(--text-secondary)', fontWeight: 700, fontSize: 13
               }}
             >
               Canjear
@@ -462,15 +462,15 @@ function Rewards({ addNotification }) {
       )}
 
       {/* ── Tabs ────────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 4, background: '#f3f4f6', borderRadius: 14, padding: 4 }}>
+      <div style={{ display: 'flex', gap: 4, background: 'var(--bg-secondary)', borderRadius: 14, padding: 4 }}>
         {tabs.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
               flex: 1, padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: isActive ? '#fff' : 'transparent',
-              color: isActive ? '#4f46e5' : '#6b7280',
+              background: isActive ? 'var(--bg-card)' : 'transparent',
+              color: isActive ? '#4f46e5' : 'var(--text-secondary)',
               fontWeight: isActive ? 700 : 500, fontSize: 13,
               boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -485,8 +485,8 @@ function Rewards({ addNotification }) {
 
       {/* ── SHOP TAB ────────────────────────────────────────────────────────── */}
       {activeTab === 'shop' && (
-        <div>
-          <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 16 }}>
+        <div className="animate-fadeIn">
+          <p className={themeConfig.textMuted} style={{ fontSize: 13, marginBottom: 16 }}>
             Items del sistema para mantener a tu personaje con vida y potenciar tu progreso.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
@@ -510,8 +510,8 @@ function Rewards({ addNotification }) {
               {['available', 'claimed'].map(f => (
                 <button key={f} onClick={() => setRewardFilter(f)} style={{
                   padding: '7px 16px', borderRadius: 24, border: 'none', cursor: 'pointer',
-                  background: rewardFilter === f ? '#4f46e5' : '#f3f4f6',
-                  color: rewardFilter === f ? '#fff' : '#6b7280',
+                  background: rewardFilter === f ? '#4f46e5' : 'var(--bg-secondary)',
+                  color: rewardFilter === f ? '#fff' : 'var(--text-secondary)',
                   fontWeight: 600, fontSize: 13
                 }}>
                   {f === 'available' ? `📦 Disponibles (${rewards.filter(r => !r.claimed).length})` : `✅ Canjeadas (${rewards.filter(r => r.claimed).length})`}
@@ -577,33 +577,30 @@ function Rewards({ addNotification }) {
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16
         }}>
-          <div style={{
-            background: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 440,
-            maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
-          }}>
+          <div className={`${themeConfig.card} p-6 w-full max-w-md rounded-2xl border ${themeConfig.border} max-h-[90vh] overflow-y-auto shadow-[0_20px_60px_rgba(0,0,0,0.2)]`}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontWeight: 800, fontSize: 20, color: '#1f2937' }}>
+              <h2 className={`m-0 font-extrabold text-xl ${themeConfig.text}`}>
                 {showEditModal ? 'Editar Recompensa' : 'Nueva Recompensa'}
               </h2>
               <button onClick={() => { setShowModal(false); setShowEditModal(false); setEditingReward(null); }}
-                style={{ background: '#f3f4f6', border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer' }}>
-                <X style={{ width: 16, height: 16, color: '#6b7280' }} />
+                className={`${themeConfig.bg} border-none rounded-lg p-2 cursor-pointer`}>
+                <X style={{ width: 16, height: 16 }} className={themeConfig.textMuted} />
               </button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 6 }}>Nombre *</label>
+                <label className={`block font-semibold text-[13px] ${themeConfig.text} mb-1.5`}>Nombre *</label>
                 <input type="text" value={newReward.name}
                   onChange={e => setNewReward({ ...newReward, name: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                  className={`w-full px-3.5 py-2.5 bg-transparent border ${themeConfig.border} rounded-xl text-sm outline-none`}
                   placeholder="Ej: Noche de películas" />
               </div>
               <div>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 6 }}>Costo (coins) *</label>
+                <label className={`block font-semibold text-[13px] ${themeConfig.text} mb-1.5`}>Costo (coins) *</label>
                 <input type="number" value={newReward.cost}
                   onChange={e => setNewReward({ ...newReward, cost: parseInt(e.target.value) || 0 })}
-                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                  className={`w-full px-3.5 py-2.5 bg-transparent border ${themeConfig.border} rounded-xl text-sm outline-none`}
                   min="1" />
               </div>
               <div>
@@ -611,11 +608,8 @@ function Rewards({ addNotification }) {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 6 }}>
                   {iconOptions.map(icon => (
                     <button key={icon} onClick={() => setNewReward({ ...newReward, icon })}
-                      style={{
-                        width: 36, height: 36, borderRadius: 8, border: newReward.icon === icon ? '2px solid #4f46e5' : '1px solid #e5e7eb',
-                        background: newReward.icon === icon ? '#eef2ff' : '#f9fafb',
-                        cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center'
-                      }}>
+                      className={`w-9 h-9 rounded-lg border ${newReward.icon === icon ? 'border-brand-500 bg-brand-50' : themeConfig.border + ' ' + themeConfig.bg} cursor-pointer text-base flex items-center justify-center transition-all`}
+                    >
                       {icon}
                     </button>
                   ))}
@@ -634,11 +628,11 @@ function Rewards({ addNotification }) {
 
             <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
               <button onClick={() => { setShowModal(false); setShowEditModal(false); setEditingReward(null); }}
-                style={{ flex: 1, padding: '11px 0', borderRadius: 10, border: '1px solid #e5e7eb', background: '#f9fafb', cursor: 'pointer', fontWeight: 600, color: '#6b7280' }}>
+                className={`flex-1 py-2.5 rounded-xl border ${themeConfig.border} ${themeConfig.bg} cursor-pointer font-bold ${themeConfig.textMuted}`}>
                 Cancelar
               </button>
               <button onClick={showEditModal ? handleUpdateReward : handleAddReward}
-                style={{ flex: 1, padding: '11px 0', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                className="flex-1 py-2.5 rounded-xl border-none bg-gradient-to-r from-brand-600 to-indigo-600 text-white font-extrabold cursor-pointer">
                 {showEditModal ? 'Guardar Cambios' : 'Crear Recompensa'}
               </button>
             </div>

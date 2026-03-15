@@ -414,7 +414,7 @@ export const allAchievements = {
 };
 
 function Achievements({ addNotification }) {
-  const { gameData } = useData();
+  const { gameData, themes } = useData();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'unlocked', 'locked'
 
@@ -458,49 +458,52 @@ function Achievements({ addNotification }) {
     { id: 'special', name: 'Especiales', icon: '✨', count: Object.keys(allAchievements.special).length }
   ];
 
+  const currentTheme = gameData.user?.theme || 'light';
+  const themeConfig = themes[currentTheme] || themes.light;
+
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${themeConfig.text}`}>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">Logros y Badges</h1>
-          <p className="text-gray-600">Desbloquea recompensas por tus logros</p>
+          <h1 className={`text-4xl font-bold mb-2 ${themeConfig.text}`}>Logros y Badges</h1>
+          <p className={themeConfig.textMuted}>Desbloquea recompensas por tus logros</p>
         </div>
       </div>
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="card-glow p-4 text-center">
+        <div className={`card-glow p-4 text-center ${themeConfig.bg}`}>
           <Trophy className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-gray-800">{unlockedCount}</div>
-          <div className="text-gray-600 text-sm">Logros Desbloqueados</div>
+          <div className={`text-2xl font-bold ${themeConfig.text}`}>{unlockedCount}</div>
+          <div className={`text-sm ${themeConfig.textMuted}`}>Logros Desbloqueados</div>
         </div>
         
-        <div className="card-glow p-4 text-center">
+        <div className={`card-glow p-4 text-center ${themeConfig.bg}`}>
           <Target className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-gray-800">{completionRate}%</div>
-          <div className="text-gray-600 text-sm">Progreso Total</div>
+          <div className={`text-2xl font-bold ${themeConfig.text}`}>{completionRate}%</div>
+          <div className={`text-sm ${themeConfig.textMuted}`}>Progreso Total</div>
         </div>
         
-        <div className="card-glow p-4 text-center">
+        <div className={`card-glow p-4 text-center ${themeConfig.bg}`}>
           <Zap className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-gray-800">
+          <div className={`text-2xl font-bold ${themeConfig.text}`}>
             {unlockedCount * 50}
           </div>
-          <div className="text-gray-600 text-sm">XP de Logros</div>
+          <div className={`text-sm ${themeConfig.textMuted}`}>XP de Logros</div>
         </div>
         
-        <div className="card-glow p-4 text-center">
+        <div className={`card-glow p-4 text-center ${themeConfig.bg}`}>
           <Award className="w-6 h-6 text-green-600 mx-auto mb-2" />
-          <div className="text-2xl font-bold text-gray-800">
+          <div className={`text-2xl font-bold ${themeConfig.text}`}>
             {unlockedCount * 25}
           </div>
-          <div className="text-gray-600 text-sm">Coins de Logros</div>
+          <div className={`text-sm ${themeConfig.textMuted}`}>Coins de Logros</div>
         </div>
       </div>
 
       {/* Category Filter */}
-      <div className="card-glow p-4">
+      <div className={`card-glow p-4 ${themeConfig.bg}`}>
         <div className="flex flex-wrap gap-2 mb-4">
           {categories.map(category => (
             <button
@@ -508,8 +511,8 @@ function Achievements({ addNotification }) {
               onClick={() => setSelectedCategory(category.id)}
               className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
                 selectedCategory === category.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-brand-600 text-white shadow-lg'
+                  : `${themeConfig.bgMuted} ${themeConfig.textMuted} hover:opacity-80`
               }`}
             >
               <span>{category.icon}</span>
@@ -529,9 +532,9 @@ function Achievements({ addNotification }) {
               name="filter"
               checked={filterStatus === 'all'}
               onChange={() => setFilterStatus('all')}
-              className="w-4 h-4 text-blue-600"
+              className="w-4 h-4 text-brand-600"
             />
-            <span className="text-gray-700">Todos</span>
+            <span className={themeConfig.text}>Todos</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -539,9 +542,9 @@ function Achievements({ addNotification }) {
               name="filter"
               checked={filterStatus === 'unlocked'}
               onChange={() => setFilterStatus('unlocked')}
-              className="w-4 h-4 text-blue-600"
+              className="w-4 h-4 text-brand-600"
             />
-            <span className="text-gray-700">Completados</span>
+            <span className={themeConfig.text}>Completados</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -549,9 +552,9 @@ function Achievements({ addNotification }) {
               name="filter"
               checked={filterStatus === 'locked'}
               onChange={() => setFilterStatus('locked')}
-              className="w-4 h-4 text-blue-600"
+              className="w-4 h-4 text-brand-600"
             />
-            <span className="text-gray-700">Bloqueados</span>
+            <span className={themeConfig.text}>Bloqueados</span>
           </label>
         </div>
       </div>
@@ -566,8 +569,8 @@ function Achievements({ addNotification }) {
               key={achievement.id}
               className={`card-glow p-4 relative overflow-hidden transition-all ${
                 isUnlocked 
-                  ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200' 
-                  : 'bg-gray-50 border-gray-200 opacity-75'
+                  ? 'bg-brand-50/10 border-brand-500 shadow-[0_0_15px_rgba(34,197,94,0.1)]' 
+                  : `${themeConfig.bgMuted} ${themeConfig.border} opacity-50`
               }`}
             >
               {/* Lock/Unlock Status */}
@@ -588,20 +591,20 @@ function Achievements({ addNotification }) {
                 </div>
                 <div className="flex-1">
                   <h3 className={`font-bold text-sm mb-1 ${
-                    isUnlocked ? 'text-gray-800' : 'text-gray-500'
+                    isUnlocked ? themeConfig.text : themeConfig.textMuted
                   }`}>
                     {achievement.name}
                   </h3>
                   {achievement.hidden && !isUnlocked && (
-                    <span className="text-xs text-purple-600 font-medium">🔓 Oculto</span>
+                    <span className="text-xs text-brand-400 font-medium">🔓 Oculto</span>
                   )}
                 </div>
               </div>
 
               {/* Description */}
               <p className={`text-xs mb-3 ${
-                isUnlocked ? 'text-gray-600' : 'text-gray-400'
-              }`}>
+                isUnlocked ? themeConfig.text : themeConfig.textMuted
+              } opacity-80`}>
                 {achievement.hidden && !isUnlocked ? 'Completa requisitos especiales para desbloquear' : achievement.description}
               </p>
 
@@ -609,12 +612,12 @@ function Achievements({ addNotification }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                    isUnlocked ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400'
+                    isUnlocked ? 'bg-brand-500/20 text-brand-300' : 'bg-gray-100/10 text-gray-500'
                   }`}>
                     +{achievement.xp} XP
                   </div>
                   <div className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                    isUnlocked ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-400'
+                    isUnlocked ? 'bg-yellow-500/20 text-yellow-300' : 'bg-gray-100/10 text-gray-500'
                   }`}>
                     +{achievement.coins} 💰
                   </div>
@@ -622,7 +625,7 @@ function Achievements({ addNotification }) {
                 
                 {/* Progress indicator for non-hidden achievements */}
                 {!achievement.hidden && !isUnlocked && (
-                  <div className="text-xs text-gray-500">
+                  <div className={`text-xs ${themeConfig.textMuted}`}>
                     {achievement.type === 'streak' && `${gameData.user.streak}/${achievement.requirement}`}
                     {achievement.type === 'tasks' && `${gameData.tasks.filter(t => t.completed).length}/${achievement.requirement}`}
                     {achievement.type === 'habits' && `${gameData.habits.length}/${achievement.requirement}`}
@@ -646,11 +649,11 @@ function Achievements({ addNotification }) {
       {/* Empty State */}
       {filteredAchievements.length === 0 && (
         <div className="text-center py-12">
-          <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-medium text-gray-600 mb-2">
+          <Trophy className={`w-16 h-16 ${themeConfig.textMuted} opacity-30 mx-auto mb-4`} />
+          <h3 className={`text-xl font-medium ${themeConfig.text} mb-2`}>
             {filterStatus === 'unlocked' ? 'No hay logros desbloqueados' : filterStatus === 'locked' ? '¡Todos los logros desbloqueados!' : 'No se encontraron logros'}
           </h3>
-          <p className="text-gray-500">
+          <p className={themeConfig.textMuted}>
             {filterStatus === 'unlocked' 
               ? 'Completa más actividades para desbloquear tu primer logro'
               : filterStatus === 'locked' ? '¡Eres una leyenda! Has desbloqueado todos los logros disponibles.' : ''

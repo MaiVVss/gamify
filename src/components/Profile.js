@@ -68,12 +68,12 @@ function StatBar({ label, stat, value, max, color, icon: Icon }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Icon style={{ width: 14, height: 14, color }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#6b7280', letterSpacing: 1 }}>{stat}</span>
-          <span style={{ fontSize: 12, color: '#9ca3af' }}>{label}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: 1 }}>{stat}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{label}</span>
         </div>
         <span style={{ fontSize: 13, fontWeight: 800, color }}>{Math.round(value)}</span>
       </div>
-      <div style={{ height: 8, background: '#f3f4f6', borderRadius: 999, overflow: 'hidden' }}>
+      <div style={{ height: 8, background: 'var(--bg-secondary)', borderRadius: 999, overflow: 'hidden' }}>
         <div style={{
           height: '100%', width: `${pct}%`,
           background: `linear-gradient(90deg, ${color}88, ${color})`,
@@ -106,12 +106,12 @@ function RadarChart({ stats }) {
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       {/* Grid */}
-      <polygon points={grid3} fill="none" stroke="#e5e7eb" strokeWidth="1" />
-      <polygon points={grid2} fill="none" stroke="#e5e7eb" strokeWidth="1" />
-      <polygon points={grid1} fill="none" stroke="#e5e7eb" strokeWidth="1" />
+      <polygon points={grid3} fill="none" stroke="var(--border-color)" strokeWidth="1" />
+      <polygon points={grid2} fill="none" stroke="var(--border-color)" strokeWidth="1" />
+      <polygon points={grid1} fill="none" stroke="var(--border-color)" strokeWidth="1" />
       {/* Axes */}
       {gridPoints.map((p, i) => (
-        <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#e5e7eb" strokeWidth="1" />
+        <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="var(--border-color)" strokeWidth="1" />
       ))}
       {/* Data */}
       <polygon points={polygon} fill="#8b5cf644" stroke="#8b5cf6" strokeWidth="2" />
@@ -126,7 +126,7 @@ function RadarChart({ stats }) {
         const v = Object.values(AREA_STATS);
         return (
           <text key={i} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle"
-            fontSize="9" fontWeight="700" fill="#6b7280">{v[i]?.stat}</text>
+            fontSize="9" fontWeight="700" fill="var(--text-secondary)">{v[i]?.stat}</text>
         );
       })}
     </svg>
@@ -274,7 +274,7 @@ function Profile({ addNotification }) {
             <div style={{ marginTop: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                 <span style={{ fontSize: 11, color: '#a78bfa' }}>XP: {user.xp}</span>
-                <span style={{ fontSize: 11, color: '#6b7280' }}>{nextRank.name} en {xpToNextRank} XP</span>
+                <span style={{ fontSize: 11, color: '#a78bfa99' }}>{nextRank.name} en {xpToNextRank} XP</span>
               </div>
               <div style={{ height: 6, background: '#ffffff18', borderRadius: 999 }}>
                 <div style={{
@@ -303,42 +303,42 @@ function Profile({ addNotification }) {
         </div>
       </div>
 
-      {/* ── Tabs ─────────────────────────────────────────────────────────────── */}
-      <div style={{ padding: '0 0 24px 0' }}>
-        <div style={{ display: 'flex', gap: 4, background: '#f3f4f6', borderRadius: 14, padding: 4, maxWidth: 400, marginBottom: 24 }}>
-          {tabs.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-              flex: 1, padding: '10px 8px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: activeTab === tab.id ? '#fff' : 'transparent',
-              color: activeTab === tab.id ? '#4f46e5' : '#6b7280',
-              fontWeight: activeTab === tab.id ? 700 : 500, fontSize: 13,
-              boxShadow: activeTab === tab.id ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.15s'
-            }}>
-              {tab.icon} {tab.label}
-            </button>
-          ))}
-        </div>
+       {/* ── Tabs ─────────────────────────────────────────────────────────────── */}
+       <div style={{ padding: '0 0 24px 0' }}>
+         <div style={{ display: 'flex', gap: 4, background: 'var(--bg-secondary)', borderRadius: 14, padding: 4, maxWidth: 400, marginBottom: 24 }}>
+           {tabs.map(tab => (
+             <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+               flex: 1, padding: '10px 8px', borderRadius: 10, border: 'none', cursor: 'pointer',
+               background: activeTab === tab.id ? 'var(--bg-card)' : 'transparent',
+               color: activeTab === tab.id ? '#4f46e5' : 'var(--text-secondary)',
+               fontWeight: activeTab === tab.id ? 700 : 500, fontSize: 13,
+               boxShadow: activeTab === tab.id ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
+               transition: 'all 0.15s'
+             }}>
+               {tab.icon} {tab.label}
+             </button>
+           ))}
+         </div>
 
         {/* ── CHARACTER TAB ──────────────────────────────────────────────────── */}
         {activeTab === 'character' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
 
             {/* Clase RPG */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 20, border: '1px solid #e5e7eb', gridColumn: 'span 2' }}>
-              <h3 style={{ margin: '0 0 16px', fontWeight: 800, color: '#1f2937', fontSize: 15 }}>⚔️ Clase de Personaje</h3>
+            <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 20, border: '1px solid var(--border-color)', gridColumn: 'span 2' }}>
+              <h3 style={{ margin: '0 0 16px', fontWeight: 800, color: 'var(--text-primary)', fontSize: 15 }}>⚔️ Clase de Personaje</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
                 {CLASSES.map(cls => {
                   const isSelected = selectedClass === cls.id || user.rpgClass === cls.id;
                   return (
                     <button key={cls.id} onClick={() => setSelectedClass(cls.id)} style={{
-                      padding: '14px 12px', borderRadius: 12, border: `2px solid ${isSelected ? cls.color : '#e5e7eb'}`,
-                      background: isSelected ? `${cls.color}10` : '#f9fafb',
+                      padding: '14px 12px', borderRadius: 12, border: `2px solid ${isSelected ? cls.color : 'var(--border-color)'}`,
+                      background: isSelected ? `${cls.color}10` : 'var(--bg-secondary)',
                       cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s'
                     }}>
                       <div style={{ fontSize: 22, marginBottom: 6 }}>{cls.icon}</div>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: isSelected ? cls.color : '#374151' }}>{cls.name}</div>
-                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{cls.desc}</div>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: isSelected ? cls.color : 'var(--text-primary)' }}>{cls.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{cls.desc}</div>
                     </button>
                   );
                 })}
@@ -354,8 +354,8 @@ function Profile({ addNotification }) {
             </div>
 
             {/* Fortalezas */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 20, border: '1px solid #e5e7eb' }}>
-              <h3 style={{ margin: '0 0 14px', fontWeight: 800, color: '#1f2937', fontSize: 15 }}>💪 Fortalezas</h3>
+            <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 20, border: '1px solid var(--border-color)' }}>
+              <h3 style={{ margin: '0 0 14px', fontWeight: 800, color: 'var(--text-primary)', fontSize: 15 }}>💪 Fortalezas</h3>
               {strengths.length === 0 ? (
                 <p style={{ color: '#9ca3af', fontSize: 13 }}>Completa más áreas de vida para descubrir tus fortalezas</p>
               ) : strengths.map(([areaId, val]) => {
@@ -381,8 +381,8 @@ function Profile({ addNotification }) {
             </div>
 
             {/* Debilidades */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 20, border: '1px solid #e5e7eb' }}>
-              <h3 style={{ margin: '0 0 14px', fontWeight: 800, color: '#1f2937', fontSize: 15 }}>🩹 Debilidades</h3>
+            <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 20, border: '1px solid var(--border-color)' }}>
+              <h3 style={{ margin: '0 0 14px', fontWeight: 800, color: 'var(--text-primary)', fontSize: 15 }}>🩹 Debilidades</h3>
               {weaknesses.map(([areaId, val]) => {
                 const info = AREA_STATS[areaId];
                 const Icon = info?.icon || Target;
@@ -402,16 +402,16 @@ function Profile({ addNotification }) {
                   </div>
                 );
               })}
-              <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 8, fontStyle: 'italic' }}>
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8, fontStyle: 'italic' }}>
                 Trabaja estas áreas para mejorar tu poder total
               </p>
             </div>
 
             {/* Logros recientes */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 20, border: '1px solid #e5e7eb', gridColumn: 'span 2' }}>
-              <h3 style={{ margin: '0 0 14px', fontWeight: 800, color: '#1f2937', fontSize: 15 }}>🏆 Logros Desbloqueados</h3>
+            <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 20, border: '1px solid var(--border-color)', gridColumn: 'span 2' }}>
+              <h3 style={{ margin: '0 0 14px', fontWeight: 800, color: 'var(--text-primary)', fontSize: 15 }}>🏆 Logros Desbloqueados</h3>
               {achievements.length === 0 ? (
-                <p style={{ color: '#9ca3af', fontSize: 13 }}>Aún no has desbloqueado logros. ¡Completa misiones!</p>
+                <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Aún no has desbloqueado logros. ¡Completa misiones!</p>
               ) : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                   {achievements.slice(0, 12).map((id, i) => {
@@ -434,9 +434,9 @@ function Profile({ addNotification }) {
                   })}
                   {achievements.length > 12 && (
                     <div style={{
-                      width: 48, height: 48, borderRadius: 12, background: '#f3f4f6',
+                      width: 48, height: 48, borderRadius: 12, background: 'var(--bg-secondary)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 12, fontWeight: 700, color: '#6b7280'
+                      fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)'
                     }}>+{achievements.length - 12}</div>
                   )}
                 </div>
@@ -451,19 +451,19 @@ function Profile({ addNotification }) {
 
             {/* Radar Chart */}
             <div style={{
-              background: '#fff', borderRadius: 16, padding: 24,
-              border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', alignItems: 'center'
+              background: 'var(--bg-card)', borderRadius: 16, padding: 24,
+              border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center'
             }}>
-              <h3 style={{ margin: '0 0 16px', fontWeight: 800, color: '#1f2937', alignSelf: 'flex-start' }}>📡 Mapa de Poder</h3>
+              <h3 style={{ margin: '0 0 16px', fontWeight: 800, color: 'var(--text-primary)', alignSelf: 'flex-start' }}>📡 Mapa de Poder</h3>
               <RadarChart stats={rpgStats} />
-              <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 8, textAlign: 'center' }}>
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8, textAlign: 'center' }}>
                 Basado en el progreso de tus áreas de vida
               </p>
             </div>
 
             {/* Stats bars */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, border: '1px solid #e5e7eb' }}>
-              <h3 style={{ margin: '0 0 16px', fontWeight: 800, color: '#1f2937' }}>⚡ Atributos</h3>
+            <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 24, border: '1px solid var(--border-color)' }}>
+              <h3 style={{ margin: '0 0 16px', fontWeight: 800, color: 'var(--text-primary)' }}>⚡ Atributos</h3>
               {Object.entries(AREA_STATS).map(([areaId, info]) => {
                 const Icon = info.icon;
                 const val = rpgStats[areaId] || 0;
@@ -482,8 +482,8 @@ function Profile({ addNotification }) {
             </div>
 
             {/* Combat Stats */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, border: '1px solid #e5e7eb' }}>
-              <h3 style={{ margin: '0 0 16px', fontWeight: 800, color: '#1f2937' }}>⚔️ Estadísticas de Batalla</h3>
+            <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 24, border: '1px solid var(--border-color)' }}>
+              <h3 style={{ margin: '0 0 16px', fontWeight: 800, color: 'var(--text-primary)' }}>⚔️ Estadísticas de Batalla</h3>
               {[
                 { label: 'Misiones completadas', val: user.totalTasksCompleted || 0, icon: '✅', color: '#10b981' },
                 { label: 'Hábitos dominados', val: user.totalHabitsCompleted || 0, icon: '🔥', color: '#f59e0b' },
@@ -494,11 +494,11 @@ function Profile({ addNotification }) {
               ].map((stat, i) => (
                 <div key={i} style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '10px 0', borderBottom: i < 5 ? '1px solid #f3f4f6' : 'none'
+                  padding: '10px 0', borderBottom: i < 5 ? '1px solid var(--border-color)' : 'none'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 16 }}>{stat.icon}</span>
-                    <span style={{ fontSize: 13, color: '#6b7280' }}>{stat.label}</span>
+                    <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{stat.label}</span>
                   </div>
                   <span style={{ fontWeight: 800, fontSize: 15, color: stat.color }}>{stat.val}</span>
                 </div>
@@ -506,8 +506,8 @@ function Profile({ addNotification }) {
             </div>
 
             {/* Rangos */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, border: '1px solid #e5e7eb' }}>
-              <h3 style={{ margin: '0 0 16px', fontWeight: 800, color: '#1f2937' }}>👑 Camino al Poder</h3>
+            <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 24, border: '1px solid var(--border-color)' }}>
+              <h3 style={{ margin: '0 0 16px', fontWeight: 800, color: 'var(--text-primary)' }}>👑 Camino al Poder</h3>
               {RANKS.map((rank, i) => {
                 const isReached = user.xp >= rank.min;
                 const isCurrent = user.xp >= rank.min && user.xp < rank.max;
@@ -520,10 +520,10 @@ function Profile({ addNotification }) {
                   }}>
                     <span style={{ fontSize: 18, opacity: isReached ? 1 : 0.3 }}>{rank.icon}</span>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: isReached ? '#1f2937' : '#9ca3af' }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: isReached ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                         {rank.name}
                       </div>
-                      <div style={{ fontSize: 11, color: '#9ca3af' }}>{rank.min}+ XP</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{rank.min}+ XP</div>
                     </div>
                     {isCurrent && <span style={{ fontSize: 10, color: rank.color, fontWeight: 700 }}>ACTUAL</span>}
                     {isReached && !isCurrent && <span style={{ fontSize: 16 }}>✅</span>}
@@ -539,15 +539,15 @@ function Profile({ addNotification }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
 
             {/* Avatar */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, border: '1px solid #e5e7eb' }}>
-              <h3 style={{ margin: '0 0 16px', fontWeight: 800, color: '#1f2937' }}>🎭 Avatar</h3>
+            <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 24, border: '1px solid var(--border-color)' }}>
+              <h3 style={{ margin: '0 0 16px', fontWeight: 800, color: 'var(--text-primary)' }}>🎭 Avatar</h3>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
                 <div style={{ position: 'relative' }}>
                   <img src={getAvatarUrl(100)} alt="Avatar"
-                    style={{ width: 100, height: 100, borderRadius: '50%', border: '3px solid #e5e7eb' }} />
+                    style={{ width: 100, height: 100, borderRadius: '50%', border: '3px solid var(--border-color)' }} />
                   <button onClick={randomizeAvatar} style={{
                     position: 'absolute', bottom: 0, right: 0, width: 28, height: 28,
-                    borderRadius: '50%', background: '#4f46e5', border: '2px solid #fff',
+                    borderRadius: '50%', background: 'var(--brand-primary)', border: '2px solid var(--bg-card)',
                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}>
                     <RefreshCw style={{ width: 12, height: 12, color: '#fff' }} />
@@ -574,7 +574,7 @@ function Profile({ addNotification }) {
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {avatarBgColors.map(c => (
                       <button key={c.id} onClick={() => updateAvatar({ backgroundColor: c.id })} style={{
-                        width: 32, height: 32, borderRadius: '50%', border: gameData.user?.avatar?.backgroundColor === c.id ? '3px solid #4f46e5' : '2px solid transparent',
+                        width: 32, height: 32, borderRadius: '50%', border: gameData.user?.avatar?.backgroundColor === c.id ? `3px solid var(--text-primary)` : `2px solid transparent`,
                         background: c.hex, cursor: 'pointer', outline: 'none'
                       }} title={c.name} />
                     ))}
@@ -595,20 +595,20 @@ function Profile({ addNotification }) {
             </div>
 
             {/* Tema */}
-            <div style={{ background: '#fff', borderRadius: 16, padding: 24, border: '1px solid #e5e7eb' }}>
-              <h3 style={{ margin: '0 0 16px', fontWeight: 800, color: '#1f2937' }}>🌙 Tema</h3>
+            <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 24, border: '1px solid var(--border-color)' }}>
+              <h3 style={{ margin: '0 0 16px', fontWeight: 800, color: 'var(--text-primary)' }}>🌙 Tema</h3>
               <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
                 {[
                   { id: 'light', label: 'Claro', icon: '☀️', activeStyle: { border: '2px solid #f59e0b', background: '#fffbeb', color: '#b45309' } },
-                  { id: 'dark', label: 'Oscuro', icon: '🌙', activeStyle: { border: '2px solid #8b5cf6', background: '#f5f3ff', color: '#6d28d9' } }
+                  { id: 'dark', label: 'Oscuro', icon: '🌙', activeStyle: { border: '2px solid #8b5cf6', background: 'var(--bg-secondary)', color: 'var(--text-primary)' } }
                 ].map(t => {
                   const isActive = currentTheme === t.id;
                   return (
                     <button key={t.id} onClick={() => setTheme(t.id)} style={{
                       flex: 1, padding: '12px 0', borderRadius: 10, cursor: 'pointer',
-                      border: isActive ? t.activeStyle.border : '1px solid #e5e7eb',
-                      background: isActive ? t.activeStyle.background : '#f9fafb',
-                      color: isActive ? t.activeStyle.color : '#6b7280',
+                      border: isActive ? t.activeStyle.border : '1px solid var(--border-color)',
+                      background: isActive ? t.activeStyle.background : 'var(--bg-card)',
+                      color: isActive ? t.activeStyle.color : 'var(--text-secondary)',
                       fontWeight: isActive ? 700 : 500, fontSize: 14, transition: 'all 0.15s'
                     }}>
                       {t.icon} {t.label}
@@ -622,7 +622,7 @@ function Profile({ addNotification }) {
                 {accentColors.map(c => (
                   <button key={c.id} onClick={() => setAccentColor(c.id)} style={{
                     width: 36, height: 36, borderRadius: '50%',
-                    background: c.hex, border: gameData.user?.accentColor === c.id ? '3px solid #1f2937' : '2px solid transparent',
+                    background: c.hex, border: gameData.user?.accentColor === c.id ? `3px solid var(--text-primary)` : `2px solid transparent`,
                     cursor: 'pointer', outline: 'none', transform: gameData.user?.accentColor === c.id ? 'scale(1.2)' : 'scale(1)',
                     transition: 'transform 0.15s'
                   }} />
@@ -659,37 +659,30 @@ function Profile({ addNotification }) {
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16
         }}>
-          <div style={{ background: '#fff', borderRadius: 20, padding: 24, width: '100%', maxWidth: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+          <div className={`${themeConfig.card} p-6 w-full max-w-md rounded-2xl border ${themeConfig.border} shadow-[0_20px_60px_rgba(0,0,0,0.2)]`}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontWeight: 800 }}>🎭 Editar Avatar</h2>
-              <button onClick={() => setShowAvatarEditor(false)} style={{ background: '#f3f4f6', border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer' }}>
-                <X style={{ width: 16, height: 16, color: '#6b7280' }} />
+              <h2 className={`m-0 font-extrabold text-xl ${themeConfig.text}`}>🎭 Editar Avatar</h2>
+              <button onClick={() => setShowAvatarEditor(false)} className={`${themeConfig.bg} border-none rounded-lg p-2 cursor-pointer`}>
+                <X style={{ width: 16, height: 16 }} className={themeConfig.textMuted} />
               </button>
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
               <div style={{ position: 'relative' }}>
-                <img src={getAvatarUrl(100)} alt="Preview" style={{ width: 100, height: 100, borderRadius: '50%', border: '3px solid #e5e7eb' }} />
-                <button onClick={randomizeAvatar} style={{
-                  position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, borderRadius: '50%',
-                  background: '#4f46e5', border: '2px solid #fff', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <RefreshCw style={{ width: 12, height: 12, color: '#fff' }} />
+                <img src={getAvatarUrl(100)} alt="Preview" className={`w-24 h-24 rounded-full border-4 ${themeConfig.border}`} />
+                <button onClick={randomizeAvatar} className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-brand-600 border-2 border-white flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-transform">
+                  <RefreshCw style={{ width: 14, height: 14, color: '#fff' }} />
                 </button>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <input value={avatarSeed} onChange={e => setAvatarSeed(e.target.value)}
-                style={{ flex: 1, padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none' }}
+                className={`flex-1 px-4 py-2.5 bg-transparent border ${themeConfig.border} rounded-xl text-sm outline-none`}
                 placeholder="Escribe tu nombre para generar avatar..." />
-              <button onClick={() => updateAvatar({ seed: avatarSeed })} style={{
-                padding: '10px 16px', borderRadius: 10, border: 'none', background: '#4f46e5', color: '#fff', fontWeight: 700, cursor: 'pointer'
-              }}>OK</button>
+              <button onClick={() => updateAvatar({ seed: avatarSeed })} className="px-6 py-2.5 rounded-xl border-none bg-brand-600 text-white font-extrabold cursor-pointer">OK</button>
             </div>
-            <button onClick={() => setShowAvatarEditor(false)} style={{
-              width: '100%', marginTop: 16, padding: '11px 0', borderRadius: 10, border: '1px solid #e5e7eb',
-              background: '#f9fafb', color: '#374151', fontWeight: 600, cursor: 'pointer'
-            }}>Cerrar</button>
+            <button onClick={() => setShowAvatarEditor(false)} className={`w-full mt-4 py-2.5 rounded-xl border ${themeConfig.border} ${themeConfig.bg} ${themeConfig.textMuted} font-bold cursor-pointer`}>
+              Cerrar
+            </button>
           </div>
         </div>
       )}

@@ -110,11 +110,11 @@ function WeekBarChart({ data }) {
             <div style={{ width: '100%', height: 60, display: 'flex', alignItems: 'flex-end' }}>
               <div style={{
                 width: '100%', height: `${Math.max(4, pct)}%`, borderRadius: 4,
-                background: isToday ? '#8b5cf6' : '#e5e7eb',
+                background: isToday ? '#8b5cf6' : 'var(--border-color)',
                 transition: 'height 0.5s'
               }} />
             </div>
-            <span style={{ fontSize: 9, color: isToday ? '#8b5cf6' : '#9ca3af', fontWeight: isToday ? 700 : 400 }}>{d.day}</span>
+            <span style={{ fontSize: 9, color: isToday ? '#8b5cf6' : 'var(--text-secondary)', fontWeight: isToday ? 700 : 400 }}>{d.day}</span>
           </div>
         );
       })}
@@ -275,7 +275,7 @@ function Analytics({ addNotification }) {
             ].map((s, i) => (
               <div key={i} style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 20, fontWeight: 900, color: s.color }}>{s.icon} {s.val}</div>
-                <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{s.label}</div>
+                <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -283,12 +283,12 @@ function Analytics({ addNotification }) {
       </div>
 
       {/* ── Tabs ───────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 4, background: '#f3f4f6', borderRadius: 14, padding: 4 }}>
+      <div style={{ display: 'flex', gap: 4, background: 'var(--bg-secondary)', borderRadius: 14, padding: 4 }}>
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
             flex: 1, padding: '10px 8px', borderRadius: 10, border: 'none', cursor: 'pointer',
-            background: activeTab === tab.id ? '#fff' : 'transparent',
-            color: activeTab === tab.id ? '#4f46e5' : '#6b7280',
+            background: activeTab === tab.id ? 'var(--bg-card)' : 'transparent',
+            color: activeTab === tab.id ? '#4f46e5' : 'var(--text-secondary)',
             fontWeight: activeTab === tab.id ? 700 : 500, fontSize: 12,
             boxShadow: activeTab === tab.id ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
             transition: 'all 0.15s'

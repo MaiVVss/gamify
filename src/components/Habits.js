@@ -209,14 +209,9 @@ const exampleHabits = [
 
 function Habits({ addNotification }) {
   const { gameData, updateGameData, updateLifeAreaProgress, updateObjectiveProgress, themes,
-    addBadHabit, relapseBadHabit, deleteBadHabit, updateBadHabitDays } = useData();
-  const [habits, setHabits] = useState(gameData.habits || []);
+    addBadHabit, relapseBadHabit, deleteBadHabit, updateBadHabitDays, toggleHabit } = useData();
+  const habits = gameData.habits || [];
 
-  // Mantener sincronizado el estado local de hábitos con el contexto global
-  useEffect(() => {
-    setHabits(gameData.habits || []);
-  }, [gameData.habits]);
-  
   const currentTheme = gameData.user?.theme || 'light';
   const themeConfig = themes[currentTheme] || themes.light;
   const [mainTab, setMainTab] = useState('good'); // 'good' | 'bad'
@@ -375,94 +370,7 @@ function Habits({ addNotification }) {
   }, [habits, filter, mainFilter]);
 
   const handleToggleHabit = (habitId) => {
-    const habit = habits.find(h => h.id === habitId);
-    if (!habit) return;
-
-    const isCompleting = !habit.completedToday;
-
-    // Calcular recompensas (solo si completando)
-    const difficulty = difficulties.find(d => d.id === habit.difficulty);
-    const baseXP = habit.xp || difficulty?.xp || 10;
-    const baseCoins = habit.coins || difficulty?.coins || 5;
-
-    let streakBonus = 0;
-    let streakCoinsBonus = 0;
-    if (isCompleting) {
-      if (habit.streak + 1 === 7) {
-        streakBonus = 50; streakCoinsBonus = 10;
-        addNotification(`🔥 ¡Racha de 7 días! +${streakBonus} XP`, 'streak');
-      } else if (habit.streak + 1 === 30) {
-        streakBonus = 200; streakCoinsBonus = 50;
-        addNotification(`🔥🔥 ¡Racha de 30 días! +${streakBonus} XP`, 'streak');
-      }
-    }
-
-    const totalXP = isCompleting ? baseXP + streakBonus : 0;
-    const totalCoins = isCompleting ? baseCoins + streakCoinsBonus : 0;
-
-    // Construir hábito actualizado con recompensas guardadas
-    const updatedHabits = habits.map(h => {
-      if (h.id === habitId) {
-        const newStreak = isCompleting ? h.streak + 1 : Math.max(0, h.streak - 1);
-        const newTotalCompletions = isCompleting
-          ? h.totalCompletions + 1
-          : Math.max(0, h.totalCompletions - 1);
-        return {
-          ...h,
-          completedToday: isCompleting,
-          streak: newStreak,
-          totalCompletions: newTotalCompletions,
-          lastCompleted: isCompleting ? new Date().toISOString() : h.lastCompleted,
-          // Guardar las recompensas exactas para poder descontarlas si se desmarca
-          earnedXP: isCompleting ? totalXP : 0,
-          earnedCoins: isCompleting ? totalCoins : 0,
-        };
-      }
-      return h;
-    });
-
-    // Actualización atómica: hábitos + usuario en un solo dispatch
-    updateGameData(prev => ({
-      ...prev,
-      habits: updatedHabits,
-      user: {
-        ...prev.user,
-        xp: Math.max(0, (prev.user.xp || 0) + (isCompleting ? totalXP : -(habit.earnedXP || 0))),
-        coins: Math.max(0, (prev.user.coins || 0) + (isCompleting ? totalCoins : -(habit.earnedCoins || 0))),
-        totalHabitsCompleted: Math.max(0, (prev.user.totalHabitsCompleted || 0) + (isCompleting ? 1 : -1)),
-        streak: isCompleting
-          ? Math.max(prev.user.streak, habit.streak + 1)
-          : prev.user.streak, // No decrementar racha global al desmarcar
-      }
-    }));
-
-    setHabits(updatedHabits);
-
-    if (isCompleting) {
-      addNotification(`¡Hábito completado! +${totalXP} XP +${totalCoins} coins`, 'success');
-
-      // Actualizar áreas de vida
-      const lifeAreaProgress = habit.difficulty === 'extreme' ? 4 : habit.difficulty === 'hard' ? 3 : habit.difficulty === 'medium' ? 2 : 1;
-      if (habit.category) {
-        updateLifeAreaProgress(habit.category, lifeAreaProgress);
-        if (habit.connectedObjectives && habit.connectedObjectives.length > 0) {
-          habit.connectedObjectives.forEach(objectiveId => {
-            updateObjectiveProgress(habit.category, objectiveId, 5);
-          });
-        } else {
-          const relatedObjectives = getRelatedObjectivesForHabit(habit.category, habit.name);
-          relatedObjectives.forEach(objectiveId => {
-            updateObjectiveProgress(habit.category, objectiveId, 5);
-          });
-        }
-      }
-    } else {
-      const deductedXP = habit.earnedXP || 0;
-      const deductedCoins = habit.earnedCoins || 0;
-      if (deductedXP > 0) {
-        addNotification(`Hábito desmarcado. -${deductedXP} XP -${deductedCoins} coins`, 'warning');
-      }
-    }
+    toggleHabit(habitId);
   };
 
   const getRelatedObjectivesForHabit = (areaId, habitName) => {
@@ -545,14 +453,13 @@ function Habits({ addNotification }) {
       return h;
     });
     
-    setHabits(updatedHabits);
     updateGameData({ habits: updatedHabits });
     
     // Force UI update by triggering multiple events
     setTimeout(() => {
       window.dispatchEvent(new Event('storage'));
       // Force React re-render by updating a dummy state
-      setHabits([...updatedHabits]);
+      updateGameData({ habits: [...updatedHabits] });
     }, 100);
     
     // CONEXIÓN CON OBJETIVOS: Avanzar progreso de objetivos conectados
@@ -590,7 +497,6 @@ function Habits({ addNotification }) {
 
     if (window.confirm(`¿Estás seguro de que quieres eliminar el hábito "${habit.name}"?`)) {
       const updatedHabits = habits.filter(h => h.id !== habitId);
-      setHabits(updatedHabits);
       updateGameData({ habits: updatedHabits });
       addNotification(`Hábito "${habit.name}" eliminado`, 'success');
     }
@@ -616,7 +522,6 @@ function Habits({ addNotification }) {
     };
 
     const updatedHabits = [...habits, habit];
-    setHabits(updatedHabits);
     updateGameData({ habits: updatedHabits });
 
     setNewHabit({

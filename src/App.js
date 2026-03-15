@@ -93,7 +93,10 @@ function AppContent() {
       case 'dashboard':    return <Dashboard addNotification={addNotification} setActiveSection={setActiveSection} />;
       case 'tasks':        return <Tasks addNotification={addNotification} />;
       case 'habits':       return <Habits addNotification={addNotification} />;
-      case 'rewards':      return <Rewards addNotification={addNotification} />;
+      case 'rewards':
+      case 'rewards-user':
+      case 'rewards-inventory':
+        return <Rewards addNotification={addNotification} activeTabHint={activeSection} />;
       case 'lifeAreas':    return <LifeAreas addNotification={addNotification} />;
       case 'calendar':     return <Calendar addNotification={addNotification} />;
       case 'achievements': return <Achievements addNotification={addNotification} />;

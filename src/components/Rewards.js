@@ -282,7 +282,7 @@ function MyRewardCard({ reward, coins, onClaim, onEdit, onDelete }) {
   );
 }
 
-function Rewards({ addNotification }) {
+function Rewards({ addNotification, activeTabHint }) {
   const { gameData, updateGameData, buyItem, usePotion: activatePotion, SHOP_ITEMS, themes } = useData();
   const [activeTab, setActiveTab] = useState('shop');
   const [rewards, setRewards] = useState(
@@ -302,10 +302,48 @@ function Rewards({ addNotification }) {
   const isDead = gameData.user?.isDead || false;
 
   useEffect(() => {
+    if (activeTabHint === 'rewards-user') {
+      setActiveTab('my-rewards');
+    } else if (activeTabHint === 'rewards-inventory') {
+      setActiveTab('inventory');
+    }
+  }, [activeTabHint]);
+
+  useEffect(() => {
     if (gameData.rewards.length === 0) {
       updateGameData({ rewards: exampleRewards });
     }
   }, [gameData.rewards.length, updateGameData]);
+
+  // -- Free Coffee -------------------------------------------------------------
+  const lastCoffeeTime = gameData.user?.lastCoffeeClaimedAt;
+  const coffeeCooldown = 8 * 60 * 60 * 1000; // 8 hours
+  const isCoffeeOnCooldown = lastCoffeeTime && (Date.now() - new Date(lastCoffeeTime).getTime() < coffeeCooldown);
+  
+  const getRemainingCoffeeTime = () => {
+    if (!lastCoffeeTime) return '';
+    const diff = coffeeCooldown - (Date.now() - new Date(lastCoffeeTime).getTime());
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  };
+
+  const claimFreeCoffee = () => {
+    if (isCoffeeOnCooldown) {
+      addNotification(`El café gratuito está en enfriamiento. Vuelve en ${getRemainingCoffeeTime()}`, 'warning');
+      return;
+    }
+    
+    updateGameData(prev => ({
+      ...prev,
+      user: {
+        ...prev.user,
+        energy: Math.min(100, (prev.user.energy || 0) + 20),
+        lastCoffeeClaimedAt: new Date().toISOString()
+      }
+    }));
+    addNotification('☕ ¡Café gratuito reclamado! +20 Energía', 'success');
+  };
 
   // ── Shop ──────────────────────────────────────────────────────────────────
   const handleBuyItem = (shopId) => {
@@ -402,7 +440,33 @@ function Rewards({ addNotification }) {
             Gana coins completando tareas y hábitos. Úsalos para sobrevivir y recompensarte.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Botón de Café Gratuito */}
+          <button
+            onClick={claimFreeCoffee}
+            disabled={isCoffeeOnCooldown}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 16px',
+              borderRadius: 12,
+              border: 'none',
+              cursor: isCoffeeOnCooldown ? 'not-allowed' : 'pointer',
+              background: isCoffeeOnCooldown 
+                ? 'rgba(255,255,255,0.1)' 
+                : 'linear-gradient(135deg, #f59e0b, #d97706)',
+              color: isCoffeeOnCooldown ? '#a78bfa' : '#fff',
+              fontWeight: 700,
+              fontSize: 12,
+              transition: 'all 0.2s',
+              boxShadow: isCoffeeOnCooldown ? 'none' : '0 4px 12px rgba(0,0,0,0.2)'
+            }}
+          >
+            <span style={{ fontSize: 18 }}>☕</span>
+            {isCoffeeOnCooldown ? getRemainingCoffeeTime() : 'Café Gratis'}
+          </button>
+
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 22, fontWeight: 800, color: '#fcd34d' }}>🪙 {coins}</div>
             <div style={{ fontSize: 11, color: '#a78bfa' }}>Coins</div>

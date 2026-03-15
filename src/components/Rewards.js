@@ -12,11 +12,17 @@ const iconOptions = [
 ];
 
 const exampleRewards = [
-  { id: 1, name: 'Café gratuito', cost: 100, icon: '☕', claimed: false, color: 'from-amber-400 to-yellow-600' },
-  { id: 2, name: 'Noche de películas', cost: 200, icon: '🎬', claimed: false, color: 'from-purple-400 to-pink-600' },
-  { id: 3, name: 'Gaming time (2h)', cost: 300, icon: '🎮', claimed: false, color: 'from-blue-400 to-indigo-600' },
-  { id: 4, name: 'Libro nuevo', cost: 250, icon: '📚', claimed: false, color: 'from-green-400 to-emerald-600' },
-  { id: 5, name: 'Masaje relajante', cost: 500, icon: '💆', claimed: false, color: 'from-pink-400 to-rose-600' },
+  { id: 1, name: 'Café gratuito', cost: 100, icon: '☕', claimed: false, color: 'from-amber-400 to-yellow-600', cooldown: 'none' },
+  { id: 2, name: 'Noche de películas', cost: 200, icon: '🎬', claimed: false, color: 'from-purple-400 to-pink-600', cooldown: 'none' },
+  { id: 3, name: 'Gaming time (2h)', cost: 300, icon: '🎮', claimed: false, color: 'from-blue-400 to-indigo-600', cooldown: 'none' },
+  { id: 4, name: 'Libro nuevo', cost: 250, icon: '📚', claimed: false, color: 'from-green-400 to-emerald-600', cooldown: 'none' },
+  { id: 5, name: 'Masaje relajante', cost: 500, icon: '💆', claimed: false, color: 'from-pink-400 to-rose-600', cooldown: 'none' },
+];
+
+const cooldownOptions = [
+  { id: 'none', label: 'Única vez' },
+  { id: '8h', label: 'Cada 8 horas' },
+  { id: '24h', label: 'Cada 24 horas' }
 ];
 
 const colorOptions = [
@@ -239,7 +245,7 @@ function MyRewardCard({ reward, coins, onClaim, onEdit, onDelete }) {
         )}
         {reward.claimed && (
           <div style={{ fontSize: 12, color: '#10b981', fontWeight: 600 }}>
-            ✅ Canjeado {reward.claimedAt ? new Date(reward.claimedAt).toLocaleDateString('es-ES') : ''}
+            ✅ {reward.cooldown && reward.cooldown !== 'none' ? 'En enfriamiento' : `Canjeado ${reward.claimedAt ? new Date(reward.claimedAt).toLocaleDateString('es-ES') : ''}`}
           </div>
         )}
       </div>
@@ -291,7 +297,7 @@ function Rewards({ addNotification, activeTabHint }) {
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingReward, setEditingReward] = useState(null);
-  const [newReward, setNewReward] = useState({ name: '', cost: 100, icon: '🎁', color: colorOptions[0] });
+  const [newReward, setNewReward] = useState({ name: '', cost: 100, icon: '🎁', color: colorOptions[0], cooldown: 'none' });
   const [rewardFilter, setRewardFilter] = useState('available');
 
   const currentTheme = gameData.user?.theme || 'light';
@@ -386,14 +392,14 @@ function Rewards({ addNotification, activeTabHint }) {
     const updated = [...rewards, reward];
     setRewards(updated);
     updateGameData({ rewards: updated });
-    setNewReward({ name: '', cost: 100, icon: '🎁', color: colorOptions[0] });
+    setNewReward({ name: '', cost: 100, icon: '🎁', color: colorOptions[0], cooldown: 'none' });
     setShowModal(false);
     addNotification('Recompensa creada', 'success');
   };
 
   const handleEditReward = (reward) => {
     setEditingReward(reward);
-    setNewReward({ name: reward.name, cost: reward.cost, icon: reward.icon, color: reward.color });
+    setNewReward({ name: reward.name, cost: reward.cost, icon: reward.icon, color: reward.color, cooldown: reward.cooldown || 'none' });
     setShowEditModal(true);
   };
 
@@ -405,7 +411,7 @@ function Rewards({ addNotification, activeTabHint }) {
     updateGameData({ rewards: updated });
     setShowEditModal(false);
     setEditingReward(null);
-    setNewReward({ name: '', cost: 100, icon: '🎁', color: colorOptions[0] });
+    setNewReward({ name: '', cost: 100, icon: '🎁', color: colorOptions[0], cooldown: 'none' });
   };
 
   const handleDeleteReward = (rewardId) => {
@@ -418,9 +424,22 @@ function Rewards({ addNotification, activeTabHint }) {
     }
   };
 
-  const filteredRewards = rewardFilter === 'available'
-    ? rewards.filter(r => !r.claimed)
-    : rewards.filter(r => r.claimed);
+  const isCooldownPassed = (reward) => {
+    if (!reward.claimedAt) return true;
+    const lastClaim = new Date(reward.claimedAt).getTime();
+    const elapsed = Date.now() - lastClaim;
+    const cooldownMs = reward.cooldown === '8h' ? 8 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    return elapsed >= cooldownMs;
+  };
+
+  const filteredRewards = rewards.filter(r => {
+    const onCooldown = r.cooldown && r.cooldown !== 'none' && !isCooldownPassed(r);
+    if (rewardFilter === 'available') {
+      return !r.claimed || (r.cooldown !== 'none' && isCooldownPassed(r));
+    } else {
+      return r.claimed && (r.cooldown === 'none' || !isCooldownPassed(r));
+    }
+  });
 
   const inventory = gameData.inventory || [];
   const renderInventoryItems = () => {
@@ -733,6 +752,21 @@ function Rewards({ addNotification, activeTabHint }) {
                   onChange={e => setNewReward({ ...newReward, cost: parseInt(e.target.value) || 0 })}
                   style={{ width: '100%', padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
                   min="1" />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 6 }}>Reinicio (Cooldown)</label>
+                <select 
+                  value={newReward.cooldown}
+                  onChange={e => setNewReward({ ...newReward, cooldown: e.target.value })}
+                  style={{ width: '100%', padding: '10px 14px', border: '1px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box', appearance: 'none', background: '#fff' }}
+                >
+                  {cooldownOptions.map(opt => (
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  ))}
+                </select>
+                <p style={{ margin: '4px 0 0', fontSize: 11, color: '#6b7280' }}>
+                  Determina si la recompensa se puede volver a canjear después de un tiempo.
+                </p>
               </div>
               <div>
                 <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#374151', marginBottom: 8 }}>Icono</label>

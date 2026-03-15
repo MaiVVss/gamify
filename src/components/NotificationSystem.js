@@ -173,7 +173,7 @@ function Toast({ notification, onDismiss }) {
 }
 
 function NotificationSystem({ notifications, onDismiss }) {
-  if (!notifications || notifications.length === 0) return null;
+  const displayedNotifications = (notifications || []).slice(-3);
 
   return (
     <div
@@ -183,7 +183,7 @@ function NotificationSystem({ notifications, onDismiss }) {
         pointerEvents: 'none', maxHeight: 'calc(100vh - 2rem)',
       }}
     >
-      {notifications.map(notification => (
+      {displayedNotifications.map(notification => (
         <div key={notification.id} style={{ pointerEvents: 'auto' }}>
           <Toast notification={notification} onDismiss={onDismiss} />
         </div>
